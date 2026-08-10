@@ -72,4 +72,15 @@ export const api = {
   guardianToken: (address: string) => get<{ risk_level: string }>(`/api/guardian/token?address=${address}`),
   prepareDeposit: (payload: { wallet: string; asset?: string; amount: string; venue_id?: string }) =>
     post<DepositPlan>("/api/prepare/deposit", payload),
+  copilot: (message: string, wallet?: string) => post<CopilotResult>("/api/copilot", { message, wallet }),
 };
+
+export interface CopilotResult {
+  service: string;
+  service_id: string;
+  tool: string;
+  job_id: string;
+  pay_tx?: string;
+  result: unknown;
+  via: string;
+}

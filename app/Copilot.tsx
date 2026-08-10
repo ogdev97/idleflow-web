@@ -1,151 +1,149 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
-import { useAccount, useChainId, useSwitchChain, useSendTransaction } from "wagmi";
-import { waitForTransactionReceipt } from "wagmi/actions";
-import { wagmiConfig } from "@/lib/wagmi";
-import type { PreparedTx } from "@/lib/api";
+import { useState } from "react";
+import { useAccount } from "wagmi";
+import { api, type CopilotResult } from "@/lib/api";
 
-type DepositPlanOut = {
-  venue_name?: string;
-  asset?: string;
-  amount?: string;
-  chain_id?: number;
-  transactions?: PreparedTx[];
-  error?: string;
-  message?: string;
-};
+type Turn = { role: "user"; text: string } | { role: "assistant"; data: CopilotResult } | { role: "error"; text: string };
 
-/** Signs a prepared deposit (approve then supply) from a copilot tool result. */
-function SignDeposit({ plan }: { plan: DepositPlanOut }) {
-  const chainId = useChainId();
-  const { switchChainAsync } = useSwitchChain();
-  const { sendTransactionAsync } = useSendTransaction();
-  const [status, setStatus] = useState<string>("");
-  const [done, setDone] = useState(false);
-  const [busy, setBusy] = useState(false);
+const USE_CASES: { label: string; prompt: string }[] = [
+  { label: "Best USDT yield", prompt: "What's the best USDT yield on X Layer?" },
+  { label: "OKB token yield", prompt: "Find the best yield for OKB" },
+  { label: "Stablecoin market", prompt: "How's the stablecoin market doing?" },
+  { label: "Cross-chain route", prompt: "Quote a cross-chain route from X Layer to Base" },
+  { label: "Guardian scan", prompt: "Is token 0x779ded0c9e1022225f8e0630b35a9b54be713736 safe?" },
+  { label: "Yield autopilot", prompt: "Set up yield autopilot for my position" },
+];
 
-  if (plan.error || !plan.transactions?.length) {
-    return <div className="mt-1 text-xs text-neutral-500">{plan.message || plan.error || "Nothing to sign."}</div>;
-  }
-  const target = (plan.chain_id ?? 196) as 196 | 1952;
+function Deliverable({ d }: { d: CopilotResult }) {
+  const r = d.result as Record<string, unknown>;
+  const n = (v: unknown) => Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 });
 
-  async function sign() {
-    setBusy(true);
-    setDone(false);
-    try {
-      if (chainId !== target) await switchChainAsync({ chainId: target });
-      const txs = plan.transactions!;
-      for (let i = 0; i < txs.length; i++) {
-        const t = txs[i];
-        setStatus(`${t.kind === "approve" ? "Approving" : "Supplying"} (${i + 1}/${txs.length}) — sign in wallet`);
-        const hash = await sendTransactionAsync({ to: t.to, data: t.data, value: t.value ? BigInt(t.value) : BigInt(0) });
-        setStatus(`Confirming ${t.kind}…`);
-        await waitForTransactionReceipt(wagmiConfig, { hash });
-      }
-      setDone(true);
-      setStatus("");
-    } catch (e) {
-      setStatus(`✕ ${(e instanceof Error ? e.message : String(e)).slice(0, 70)}`);
-    } finally {
-      setBusy(false);
-    }
+  let body: React.ReactNode;
+  if (Array.isArray(r?.opportunities)) {
+    body = (
+      <div className="flex flex-col gap-1">
+        {(r.opportunities as Record<string, unknown>[]).map((o, i) => (
+          <div key={i} className="flex justify-between">
+            <span>{String(o.venue_name)}</span>
+            <span className="text-emerald-400">{String(o.apy_pct)}% · risk {String(o.risk_score)}</span>
+          </div>
+        ))}
+      </div>
+    );
+  } else if (typeof r?.total_market_cap_usd === "number") {
+    const x = r.xlayer as Record<string, unknown> | undefined;
+    body = (
+      <div>
+        Total stablecoin cap ${n(r.total_market_cap_usd)} · X Layer share {String(x?.share_pct ?? "—")}%
+      </div>
+    );
+  } else if (r?.risk_level) {
+    body = <div>Risk: <span className="text-emerald-400">{String(r.risk_level)}</span>{r.is_honeypot ? " · ⚠ honeypot" : ""}</div>;
+  } else if (Array.isArray(r?.options)) {
+    body = (
+      <div className="flex flex-col gap-1">
+        {(r.options as Record<string, unknown>[]).slice(0, 4).map((o, i) => (
+          <div key={i} className="flex justify-between">
+            <span>{String(o.name ?? o.protocol ?? "pool")}</span>
+            <span className="text-emerald-400">{String(o.apy_pct ?? o.apy ?? "")}%</span>
+          </div>
+        ))}
+      </div>
+    );
+  } else {
+    body = <pre className="overflow-x-auto whitespace-pre-wrap text-xs text-neutral-300">{JSON.stringify(r, null, 2).slice(0, 800)}</pre>;
   }
 
   return (
-    <div className="mt-2 rounded-lg border border-emerald-800/60 bg-emerald-950/30 p-3">
-      <div className="text-sm text-neutral-200">
-        Deposit {plan.amount} {plan.asset} → {plan.venue_name}
+    <div className="rounded-2xl bg-neutral-800/70 px-3 py-2.5 text-sm text-neutral-100">
+      <div className="mb-1 text-xs text-neutral-500">
+        {d.service} · via OKX A2A/x402 ·{" "}
+        <span title={d.job_id}>job {d.job_id.slice(0, 8)}…</span>
+        {d.pay_tx && <> · paid {d.pay_tx.slice(0, 8)}…</>}
       </div>
-      {done ? (
-        <div className="mt-1 text-sm text-emerald-300">Deposited — earning now. IdleFlow never held a cent.</div>
-      ) : (
-        <>
-          <button
-            onClick={sign}
-            disabled={busy}
-            className="mt-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
-          >
-            {busy ? "Working…" : "Review & sign in wallet"}
-          </button>
-          {status && <div className="mt-1 text-xs text-neutral-400">{status}</div>}
-        </>
-      )}
+      {body}
     </div>
   );
 }
 
 export function Copilot() {
   const { address } = useAccount();
-  const walletRef = useRef<string | undefined>(undefined);
-  walletRef.current = address;
-
-  const [transport] = useState(
-    () => new DefaultChatTransport({ api: "/api/chat", body: () => ({ wallet: walletRef.current }) }),
-  );
-  const { messages, sendMessage, status } = useChat({ transport });
+  const [turns, setTurns] = useState<Turn[]>([]);
   const [input, setInput] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  const send = () => {
-    const text = input.trim();
-    if (!text) return;
+  async function ask(text: string) {
+    const msg = text.trim();
+    if (!msg || busy) return;
     setInput("");
-    sendMessage({ text });
-  };
+    setTurns((t) => [...t, { role: "user", text: msg }]);
+    setBusy(true);
+    try {
+      const data = await api.copilot(msg, address);
+      setTurns((t) => [...t, { role: "assistant", data }]);
+    } catch (e) {
+      setTurns((t) => [...t, { role: "error", text: e instanceof Error ? e.message : String(e) }]);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-5">
-      <div className="mb-3 flex items-center gap-2 text-sm">
+      <div className="mb-1 flex items-center gap-2 text-sm">
         <span className="text-emerald-400">✦</span>
         <span className="font-medium">Copilot</span>
-        <span className="text-neutral-500">— ask it to find and earn yield</span>
+        <span className="text-neutral-500">— runs on the OKX AI agent layer (no LLM key)</span>
+      </div>
+      <div className="mb-3 text-xs text-neutral-500">
+        Each request hires IdleFlow (#4523) on OKX.AI and pays 0.01 USDT — real, on-chain, non-custodial.
+      </div>
+
+      <div className="mb-3 flex flex-wrap gap-2">
+        {USE_CASES.map((u) => (
+          <button
+            key={u.label}
+            onClick={() => ask(u.prompt)}
+            disabled={busy}
+            className="rounded-full border border-neutral-700 px-3 py-1 text-xs text-neutral-300 hover:border-emerald-600 hover:text-white disabled:opacity-40"
+          >
+            {u.label}
+          </button>
+        ))}
       </div>
 
       <div className="flex max-h-96 flex-col gap-3 overflow-y-auto">
-        {messages.length === 0 && (
-          <div className="text-sm text-neutral-500">
-            Try: <span className="text-neutral-300">&ldquo;I have 100 USDT idle, earn it safely on X Layer&rdquo;</span>
-          </div>
+        {turns.length === 0 && (
+          <div className="text-sm text-neutral-500">Pick a use case above, or ask anything about X Layer yield.</div>
         )}
-        {messages.map((m) => (
-          <div key={m.id} className={m.role === "user" ? "text-right" : ""}>
-            <div
-              className={
-                m.role === "user"
-                  ? "inline-block rounded-2xl bg-emerald-600/90 px-3 py-2 text-sm text-white"
-                  : "inline-block max-w-full rounded-2xl bg-neutral-800/70 px-3 py-2 text-sm text-neutral-100"
-              }
-            >
-              {m.parts.map((part, i) => {
-                if (part.type === "text") return <span key={i} className="whitespace-pre-wrap">{part.text}</span>;
-                if (part.type === "tool-prepare_deposit" && part.state === "output-available")
-                  return <SignDeposit key={i} plan={part.output as DepositPlanOut} />;
-                if (part.type.startsWith("tool-") && "state" in part && part.state !== "output-available")
-                  return (
-                    <div key={i} className="text-xs text-neutral-500">
-                      · using {part.type.replace("tool-", "")}…
-                    </div>
-                  );
-                return null;
-              })}
-            </div>
+        {turns.map((t, i) => (
+          <div key={i} className={t.role === "user" ? "text-right" : ""}>
+            {t.role === "user" && <span className="inline-block rounded-2xl bg-emerald-600/90 px-3 py-2 text-sm text-white">{t.text}</span>}
+            {t.role === "assistant" && <Deliverable d={t.data} />}
+            {t.role === "error" && <span className="inline-block rounded-2xl bg-red-950/60 px-3 py-2 text-sm text-red-300">{t.text}</span>}
           </div>
         ))}
+        {busy && (
+          <div className="flex items-center gap-2 text-sm text-neutral-400">
+            <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-neutral-600 border-t-emerald-500" />
+            Hiring IdleFlow on OKX.AI (on-chain, ~45s)…
+          </div>
+        )}
       </div>
 
       <div className="mt-3 flex gap-2">
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && send()}
+          onKeyDown={(e) => e.key === "Enter" && ask(input)}
           placeholder="Ask the copilot…"
-          className="flex-1 rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-2.5 text-sm outline-none focus:border-emerald-600"
+          disabled={busy}
+          className="flex-1 rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-2.5 text-sm outline-none focus:border-emerald-600 disabled:opacity-50"
         />
         <button
-          onClick={send}
-          disabled={status === "streaming" || status === "submitted"}
+          onClick={() => ask(input)}
+          disabled={busy}
           className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
         >
           Send
