@@ -1,19 +1,15 @@
 "use client";
 
-import { useAccount, useConnect, useDisconnect, useChainId, useSwitchChain } from "wagmi";
+import { useAccount, useChainId, useSwitchChain } from "wagmi";
 import { useQuery } from "@tanstack/react-query";
 import { api, type YieldResponse, type MarketOverview } from "@/lib/api";
 import { xLayer } from "@/lib/chains";
 import { DepositCard } from "./DepositCard";
-
-function short(a?: string) {
-  return a ? `${a.slice(0, 6)}…${a.slice(-4)}` : "";
-}
+import { ConnectWallet } from "./ConnectWallet";
+import { Copilot } from "./Copilot";
 
 export default function Home() {
-  const { address, isConnected } = useAccount();
-  const { connect, connectors, isPending } = useConnect();
-  const { disconnect } = useDisconnect();
+  const { isConnected } = useAccount();
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
 
@@ -21,7 +17,6 @@ export default function Home() {
   const marketQ = useQuery<MarketOverview>({ queryKey: ["market"], queryFn: () => api.market() });
 
   const best = yieldQ.data?.opportunities?.[0];
-  const injected = connectors[0];
 
   return (
     <main className="mx-auto w-full max-w-2xl px-6 py-16 flex flex-col gap-10 text-neutral-100">
@@ -31,22 +26,7 @@ export default function Home() {
           <span className="font-semibold">IdleFlow</span>
           <span className="text-xs text-neutral-500">X Layer money operations</span>
         </div>
-        {isConnected ? (
-          <button
-            onClick={() => disconnect()}
-            className="rounded-lg border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-800"
-          >
-            {short(address)} · disconnect
-          </button>
-        ) : (
-          <button
-            onClick={() => injected && connect({ connector: injected })}
-            disabled={isPending || !injected}
-            className="rounded-lg bg-emerald-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
-          >
-            {isPending ? "Connecting…" : "Connect wallet"}
-          </button>
-        )}
+        <ConnectWallet />
       </header>
 
       <section className="flex flex-col gap-3">
@@ -82,6 +62,8 @@ export default function Home() {
           <DepositCard best={best} />
         </div>
       </section>
+
+      <Copilot />
 
       <footer className="flex items-center justify-between text-xs text-neutral-500">
         <span>
