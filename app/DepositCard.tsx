@@ -3,8 +3,10 @@
 import { useState } from "react";
 import { useAccount, useChainId, useSwitchChain, useSendTransaction } from "wagmi";
 import { waitForTransactionReceipt } from "wagmi/actions";
-import { api, type YieldVenue } from "@/lib/api";
+import { useQuery } from "@tanstack/react-query";
+import { api, type YieldVenue, type MarketTrends } from "@/lib/api";
 import { wagmiConfig } from "@/lib/wagmi";
+import { AreaChart } from "./AreaChart";
 
 type Step = { label: string; hash?: `0x${string}`; status: "pending" | "signing" | "confirming" | "done" | "error"; error?: string };
 
@@ -12,6 +14,8 @@ export function DepositCard({ best }: { best?: YieldVenue }) {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const { switchChainAsync } = useSwitchChain();
+  const trendsQ = useQuery<MarketTrends>({ queryKey: ["trends", 30], queryFn: () => api.trends(30) });
+  const series = trendsQ.data?.points.map((p) => p.mcap_usd) ?? [];
   const { sendTransactionAsync } = useSendTransaction();
 
   const [amount, setAmount] = useState("");
@@ -70,6 +74,10 @@ export function DepositCard({ best }: { best?: YieldVenue }) {
           <div>risk {best?.risk_score ?? 1}/5</div>
           <div>non-custodial</div>
         </div>
+      </div>
+
+      <div className="mt-3">
+        <AreaChart data={series} height={52} showDot={false} strokeWidth={1.6} />
       </div>
 
       <div className="mt-4 flex gap-2">

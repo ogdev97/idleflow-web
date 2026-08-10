@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { api, type YieldResponse, type MarketOverview } from "@/lib/api";
+import { api, type YieldResponse, type MarketOverview, type MarketTrends } from "@/lib/api";
 import { OKX_AGENT_URL } from "@/lib/constants";
 import { Logo } from "./Logo";
+import { AreaChart } from "./AreaChart";
 
 function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
@@ -29,7 +30,9 @@ function Feature({ icon, title, body }: { icon: string; title: string; body: str
 export default function Landing() {
   const yieldQ = useQuery<YieldResponse>({ queryKey: ["yield", "USDT"], queryFn: () => api.yield("USDT") });
   const marketQ = useQuery<MarketOverview>({ queryKey: ["market"], queryFn: () => api.market() });
+  const trendsQ = useQuery<MarketTrends>({ queryKey: ["trends", 30], queryFn: () => api.trends(30) });
   const best = yieldQ.data?.opportunities?.[0];
+  const series = trendsQ.data?.points.map((p) => p.mcap_usd) ?? [];
 
   return (
     <div className="relative min-h-full overflow-hidden">
@@ -37,7 +40,7 @@ export default function Landing() {
       <div className="grid-bg absolute inset-0" />
 
       {/* Nav */}
-      <header className="relative z-10 mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
+      <header className="relative z-50 mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
         <Logo />
         <nav className="flex items-center gap-3 text-sm">
           <a href={OKX_AGENT_URL} target="_blank" rel="noopener" className="hidden text-[var(--muted)] hover:text-[var(--text)] sm:inline">
@@ -87,7 +90,14 @@ export default function Landing() {
                 <div>TVL ${best ? Number(best.tvl).toLocaleString(undefined, { maximumFractionDigits: 0 }) : "—"}</div>
               </div>
             </div>
-            <div className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm">
+            <div className="mt-4">
+              <div className="mb-1 flex items-center justify-between text-[11px] text-[var(--muted)]">
+                <span>Stablecoin market cap · 30d</span>
+                <span className="brand-text">live</span>
+              </div>
+              <AreaChart data={series} height={110} />
+            </div>
+            <div className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm">
               <span className="brand-text">✦ Copilot</span>{" "}
               <span className="text-[var(--muted)]">“I have 100 USDT idle — earn it safely.”</span>
             </div>

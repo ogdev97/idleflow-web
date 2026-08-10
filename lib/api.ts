@@ -73,7 +73,14 @@ export const api = {
   prepareDeposit: (payload: { wallet: string; asset?: string; amount: string; venue_id?: string }) =>
     post<DepositPlan>("/api/prepare/deposit", payload),
   copilot: (message: string, wallet?: string) => post<CopilotResult>("/api/copilot", { message, wallet }),
+  trends: (days = 30) => get<MarketTrends>(`/api/market/trends?days=${days}`),
 };
+
+export interface MarketTrends {
+  chain: string;
+  range_days: number;
+  points: { date: string; mcap_usd: number }[];
+}
 
 export interface CopilotResult {
   service: string;

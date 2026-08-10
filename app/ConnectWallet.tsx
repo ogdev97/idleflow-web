@@ -63,8 +63,8 @@ export function ConnectWallet() {
 
       {open && (
         <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="glass absolute right-0 z-20 mt-2 w-64 p-2 shadow-2xl">
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 z-50 mt-2 w-64 rounded-2xl border border-[var(--border-2)] bg-[#0c1016] p-2 shadow-2xl">
             <button
               onClick={connectOkx}
               className="flex w-full items-center justify-between rounded-lg bg-neutral-800/70 px-3 py-2.5 text-left text-sm font-medium hover:bg-neutral-800"

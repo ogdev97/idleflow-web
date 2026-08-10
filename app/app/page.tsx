@@ -17,7 +17,7 @@ export default function AppPage() {
     <div className="relative min-h-full overflow-hidden">
       <div className="glow glow-soft" />
 
-      <header className="relative z-10 mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
+      <header className="relative z-50 mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
         <Link href="/" className="opacity-90 hover:opacity-100">
           <Logo />
         </Link>
