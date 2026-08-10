@@ -11,6 +11,10 @@ import type { WalletClient } from "viem";
 const RESOURCE = `${process.env.NEXT_PUBLIC_IDLEFLOW_API ?? "https://idleflow-v1.fly.dev"}/mcp`;
 const NETWORK = "eip155:196"; // X Layer mainnet
 
+/** USD₮0 on X Layer (the x402 payment asset) + the per-call price. */
+export const USDT_ADDRESS = "0x779ded0c9e1022225f8e0630b35a9b54be713736" as const;
+export const CALL_PRICE_USDT = 0.01;
+
 function toolBody(tool: string, args: Record<string, unknown>) {
   return JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: tool, arguments: args } });
 }

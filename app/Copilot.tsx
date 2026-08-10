@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useAccount, useChainId, useSwitchChain, useWalletClient } from "wagmi";
-import { payAndCallTool, routeIntent } from "@/lib/x402";
+import { useAccount, useChainId, useReadContract, useSwitchChain, useWalletClient } from "wagmi";
+import { erc20Abi, formatUnits } from "viem";
+import { payAndCallTool, routeIntent, USDT_ADDRESS, CALL_PRICE_USDT } from "@/lib/x402";
 import { xLayer } from "@/lib/chains";
 
 type Turn =
@@ -53,21 +54,38 @@ function Deliverable({ result }: { result: unknown }) {
 }
 
 export function Copilot() {
-  const { isConnected } = useAccount();
+  const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const { switchChainAsync } = useSwitchChain();
   const { data: walletClient } = useWalletClient();
+  const { data: usdtRaw } = useReadContract({
+    address: USDT_ADDRESS,
+    abi: erc20Abi,
+    functionName: "balanceOf",
+    args: address ? [address] : undefined,
+    chainId: xLayer.id,
+    query: { enabled: isConnected && !!address, refetchInterval: 15_000 },
+  });
   const [turns, setTurns] = useState<Turn[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
 
   const gated = !isConnected || !walletClient;
+  const usdtBal = usdtRaw !== undefined ? Number(formatUnits(usdtRaw, 6)) : undefined;
+  const underfunded = usdtBal !== undefined && usdtBal < CALL_PRICE_USDT;
 
   async function ask(text: string) {
     const msg = text.trim();
     if (!msg || busy) return;
     if (gated) {
       setTurns((t) => [...t, { role: "error", text: "Connect your OKX Wallet first — you pay 0.01 USDT per call, from your own wallet." }]);
+      return;
+    }
+    if (underfunded) {
+      setTurns((t) => [
+        ...t,
+        { role: "error", text: `Fund your wallet first — you have ${usdtBal?.toFixed(4)} USDT, each call costs ${CALL_PRICE_USDT}. Send USD₮0 to your wallet on X Layer.` },
+      ]);
       return;
     }
     setInput("");
@@ -96,12 +114,25 @@ export function Copilot() {
         You pay 0.01 USDT per call from your OWN wallet — IdleFlow never holds your funds. Non-custodial.
       </div>
 
+      {isConnected && (
+        <div className="mb-3 flex items-center gap-2 text-xs">
+          <span className="text-neutral-400">
+            Your USDT: <span className="text-neutral-200">{usdtBal !== undefined ? usdtBal.toFixed(4) : "…"}</span>
+          </span>
+          {underfunded && (
+            <span className="rounded-md bg-amber-950/60 px-2 py-0.5 text-amber-300">
+              ⚠ Fund your wallet — need ≥ {CALL_PRICE_USDT} USD₮0 on X Layer to run the copilot.
+            </span>
+          )}
+        </div>
+      )}
+
       <div className="mb-3 flex flex-wrap gap-2">
         {USE_CASES.map((u) => (
           <button
             key={u.label}
             onClick={() => ask(u.prompt)}
-            disabled={busy}
+            disabled={busy || underfunded}
             className="rounded-full border border-neutral-700 px-3 py-1 text-xs text-neutral-300 hover:border-emerald-600 hover:text-white disabled:opacity-40"
           >
             {u.label}
@@ -148,7 +179,7 @@ export function Copilot() {
         />
         <button
           onClick={() => ask(input)}
-          disabled={busy}
+          disabled={busy || underfunded}
           className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
         >
           Send
