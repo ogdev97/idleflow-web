@@ -4,6 +4,7 @@ import { useAccount, useConnect, useDisconnect, useChainId, useSwitchChain } fro
 import { useQuery } from "@tanstack/react-query";
 import { api, type YieldResponse, type MarketOverview } from "@/lib/api";
 import { xLayer } from "@/lib/chains";
+import { DepositCard } from "./DepositCard";
 
 function short(a?: string) {
   return a ? `${a.slice(0, 6)}…${a.slice(-4)}` : "";
@@ -77,13 +78,9 @@ export default function Home() {
         ) : (
           <div className="mt-3 text-neutral-500">No venue.</div>
         )}
-        <button
-          disabled
-          className="mt-6 w-full rounded-xl bg-emerald-600/40 px-4 py-3 font-medium text-white/70"
-          title="Deposit flow lands in Phase 1"
-        >
-          {isConnected ? "Deposit (Phase 1)" : "Connect wallet to deposit"}
-        </button>
+        <div className="mt-6">
+          <DepositCard best={best} />
+        </div>
       </section>
 
       <footer className="flex items-center justify-between text-xs text-neutral-500">

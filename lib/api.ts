@@ -14,6 +14,19 @@ async function get<T>(path: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+async function post<T>(path: string, payload: unknown): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    method: "POST",
+    headers: { accept: "application/json", "content-type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.message || body.error || `HTTP ${res.status}`);
+  }
+  return res.json() as Promise<T>;
+}
+
 export interface YieldVenue {
   venue_id: string;
   venue_name: string;
@@ -34,10 +47,29 @@ export interface MarketOverview {
   total_market_cap_usd: number;
   change_pct?: { day?: number; week?: number };
 }
+export interface PreparedTx {
+  kind: string;
+  to: `0x${string}`;
+  data: `0x${string}`;
+  value?: string;
+  chainId?: number;
+  description?: string;
+}
+export interface DepositPlan {
+  mode: "intent";
+  venue_name: string;
+  asset: string;
+  amount: string;
+  chain_id: number;
+  transactions: PreparedTx[];
+  execute_hint: string;
+}
 
 export const api = {
   yield: (asset = "USDT") => get<YieldResponse>(`/api/yield?asset=${encodeURIComponent(asset)}`),
   market: () => get<MarketOverview>("/api/market"),
   positions: (wallet: string) => get<unknown>(`/api/positions?wallet=${wallet}`),
   guardianToken: (address: string) => get<{ risk_level: string }>(`/api/guardian/token?address=${address}`),
+  prepareDeposit: (payload: { wallet: string; asset?: string; amount: string; venue_id?: string }) =>
+    post<DepositPlan>("/api/prepare/deposit", payload),
 };
