@@ -21,11 +21,8 @@ export function ConnectWallet() {
 
   if (isConnected) {
     return (
-      <button
-        onClick={() => disconnect()}
-        className="rounded-lg border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-800"
-      >
-        {short(address)} · disconnect
+      <button onClick={() => disconnect()} className="btn-ghost px-3 py-2 text-sm">
+        <span className="brand-text">●</span> {short(address)}
       </button>
     );
   }
@@ -60,18 +57,14 @@ export function ConnectWallet() {
 
   return (
     <div className="relative">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        disabled={isPending}
-        className="rounded-lg bg-emerald-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
-      >
+      <button onClick={() => setOpen((v) => !v)} disabled={isPending} className="btn-brand px-4 py-2 text-sm disabled:opacity-50">
         {isPending ? "Connecting…" : "Connect wallet"}
       </button>
 
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 z-20 mt-2 w-64 rounded-xl border border-neutral-800 bg-neutral-900 p-2 shadow-xl">
+          <div className="glass absolute right-0 z-20 mt-2 w-64 p-2 shadow-2xl">
             <button
               onClick={connectOkx}
               className="flex w-full items-center justify-between rounded-lg bg-neutral-800/70 px-3 py-2.5 text-left text-sm font-medium hover:bg-neutral-800"

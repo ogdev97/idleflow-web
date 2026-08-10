@@ -1,26 +1,126 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #07090d;
+  --panel: rgba(255, 255, 255, 0.028);
+  --panel-2: rgba(255, 255, 255, 0.05);
+  --border: rgba(255, 255, 255, 0.08);
+  --border-2: rgba(255, 255, 255, 0.14);
+  --text: #f3f6fb;
+  --muted: #8b93a7;
+  --brand: #2ee6a0;
+  --brand-2: #17c98a;
+  --brand-ink: #04170f;
+  --danger: #ff6b6b;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-brand: var(--brand);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Ambient green glow behind hero sections */
+.glow {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.glow::before {
+  content: "";
+  position: absolute;
+  top: -30%;
+  left: 50%;
+  width: 900px;
+  height: 700px;
+  transform: translateX(-50%);
+  background: radial-gradient(closest-side, rgba(46, 230, 160, 0.16), transparent 72%);
+  filter: blur(20px);
+}
+.glow-soft::before {
+  background: radial-gradient(closest-side, rgba(46, 230, 160, 0.09), transparent 72%);
+}
+
+/* Glass card */
+.glass {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.015));
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  backdrop-filter: blur(6px);
+}
+.glass-hover {
+  transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+.glass-hover:hover {
+  border-color: rgba(46, 230, 160, 0.35);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px -20px rgba(46, 230, 160, 0.4);
+}
+
+/* Brand button */
+.btn-brand {
+  background: linear-gradient(180deg, var(--brand), var(--brand-2));
+  color: var(--brand-ink);
+  font-weight: 600;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px -12px rgba(46, 230, 160, 0.7);
+  transition: filter 0.15s ease, transform 0.1s ease;
+}
+.btn-brand:hover {
+  filter: brightness(1.06);
+}
+.btn-brand:active {
+  transform: translateY(1px);
+}
+.btn-ghost {
+  border: 1px solid var(--border-2);
+  color: var(--text);
+  border-radius: 12px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.btn-ghost:hover {
+  border-color: rgba(46, 230, 160, 0.45);
+  background: rgba(46, 230, 160, 0.06);
+}
+
+.brand-text {
+  color: var(--brand);
+}
+.grad-text {
+  background: linear-gradient(90deg, #ffffff, #b9f5df 60%, var(--brand));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Faint grid texture */
+.grid-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse at 50% 0%, black, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+::selection {
+  background: rgba(46, 230, 160, 0.28);
 }

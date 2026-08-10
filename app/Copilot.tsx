@@ -25,32 +25,32 @@ function Deliverable({ result }: { result: unknown }) {
   const n = (v: unknown) => Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 });
   if (Array.isArray(r?.opportunities))
     return (
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-1.5">
         {(r.opportunities as Record<string, unknown>[]).map((o, i) => (
           <div key={i} className="flex justify-between">
             <span>{String(o.venue_name)}</span>
-            <span className="text-emerald-400">{String(o.apy_pct)}% · risk {String(o.risk_score)}</span>
+            <span className="brand-text">{String(o.apy_pct)}% · risk {String(o.risk_score)}</span>
           </div>
         ))}
       </div>
     );
   if (typeof r?.total_market_cap_usd === "number") {
     const x = r.xlayer as Record<string, unknown> | undefined;
-    return <div>Total stablecoin cap ${n(r.total_market_cap_usd)} · X Layer {String(x?.share_pct ?? "—")}%</div>;
+    return <div>Total stablecoin cap <span className="brand-text">${n(r.total_market_cap_usd)}</span> · X Layer {String(x?.share_pct ?? "—")}%</div>;
   }
-  if (r?.risk_level) return <div>Risk: <span className="text-emerald-400">{String(r.risk_level)}</span>{r.is_honeypot ? " · ⚠ honeypot" : ""}</div>;
+  if (r?.risk_level) return <div>Risk: <span className="brand-text">{String(r.risk_level)}</span>{r.is_honeypot ? " · ⚠ honeypot" : ""}</div>;
   if (Array.isArray(r?.options))
     return (
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-1.5">
         {(r.options as Record<string, unknown>[]).slice(0, 4).map((o, i) => (
           <div key={i} className="flex justify-between">
             <span>{String(o.name ?? o.protocol ?? "pool")}</span>
-            <span className="text-emerald-400">{String(o.apy_pct ?? o.apy ?? "")}%</span>
+            <span className="brand-text">{String(o.apy_pct ?? o.apy ?? "")}%</span>
           </div>
         ))}
       </div>
     );
-  return <pre className="overflow-x-auto whitespace-pre-wrap text-xs text-neutral-300">{JSON.stringify(r, null, 2).slice(0, 700)}</pre>;
+  return <pre className="overflow-x-auto whitespace-pre-wrap text-xs text-[var(--muted)]">{JSON.stringify(r, null, 2).slice(0, 700)}</pre>;
 }
 
 export function Copilot() {
@@ -73,6 +73,7 @@ export function Copilot() {
   const gated = !isConnected || !walletClient;
   const usdtBal = usdtRaw !== undefined ? Number(formatUnits(usdtRaw, 6)) : undefined;
   const underfunded = usdtBal !== undefined && usdtBal < CALL_PRICE_USDT;
+  const blocked = busy || underfunded;
 
   async function ask(text: string) {
     const msg = text.trim();
@@ -82,10 +83,7 @@ export function Copilot() {
       return;
     }
     if (underfunded) {
-      setTurns((t) => [
-        ...t,
-        { role: "error", text: `Fund your wallet first — you have ${usdtBal?.toFixed(4)} USDT, each call costs ${CALL_PRICE_USDT}. Send USD₮0 to your wallet on X Layer.` },
-      ]);
+      setTurns((t) => [...t, { role: "error", text: `Fund your wallet first — you have ${usdtBal?.toFixed(4)} USDT, each call costs ${CALL_PRICE_USDT}. Send USD₮0 to your wallet on X Layer.` }]);
       return;
     }
     setInput("");
@@ -104,86 +102,91 @@ export function Copilot() {
   }
 
   return (
-    <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-5">
-      <div className="mb-1 flex items-center gap-2 text-sm">
-        <span className="text-emerald-400">✦</span>
-        <span className="font-medium">Copilot</span>
-        <span className="text-neutral-500">— powered by the OKX agent layer (x402), no LLM key</span>
-      </div>
-      <div className="mb-3 text-xs text-neutral-500">
-        You pay 0.01 USDT per call from your OWN wallet — IdleFlow never holds your funds. Non-custodial.
-      </div>
-
-      {isConnected && (
-        <div className="mb-3 flex items-center gap-2 text-xs">
-          <span className="text-neutral-400">
-            Your USDT: <span className="text-neutral-200">{usdtBal !== undefined ? usdtBal.toFixed(4) : "…"}</span>
-          </span>
-          {underfunded && (
-            <span className="rounded-md bg-amber-950/60 px-2 py-0.5 text-amber-300">
-              ⚠ Fund your wallet — need ≥ {CALL_PRICE_USDT} USD₮0 on X Layer to run the copilot.
+    <section className="glass overflow-hidden">
+      {/* Header */}
+      <div className="border-b border-[var(--border)] bg-[rgba(46,230,160,0.04)] px-6 py-4">
+        <div className="flex items-center gap-2">
+          <span className="grid h-7 w-7 place-items-center rounded-lg bg-[rgba(46,230,160,0.16)] brand-text">✦</span>
+          <span className="text-lg font-semibold">Copilot</span>
+          <span className="ml-auto text-xs text-[var(--muted)]">OKX agent layer · x402 · no LLM key</span>
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--muted)]">
+          <span>You pay 0.01 USDT per call from your own wallet — non-custodial.</span>
+          {isConnected && (
+            <span className="text-[var(--text)]">
+              · Balance: <span className={underfunded ? "text-amber-400" : "brand-text"}>{usdtBal !== undefined ? usdtBal.toFixed(4) : "…"} USDT</span>
             </span>
           )}
         </div>
-      )}
-
-      <div className="mb-3 flex flex-wrap gap-2">
-        {USE_CASES.map((u) => (
-          <button
-            key={u.label}
-            onClick={() => ask(u.prompt)}
-            disabled={busy || underfunded}
-            className="rounded-full border border-neutral-700 px-3 py-1 text-xs text-neutral-300 hover:border-emerald-600 hover:text-white disabled:opacity-40"
-          >
-            {u.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="flex max-h-96 flex-col gap-3 overflow-y-auto">
-        {turns.length === 0 && (
-          <div className="text-sm text-neutral-500">
-            {gated ? "Connect your OKX Wallet to start — each call costs you 0.01 USDT." : "Pick a use case above, or ask about X Layer yield."}
+        {underfunded && (
+          <div className="mt-2 rounded-lg bg-amber-950/50 px-3 py-1.5 text-xs text-amber-300">
+            ⚠ Fund your wallet — send at least {CALL_PRICE_USDT} USD₮0 on X Layer to run the copilot.
           </div>
         )}
-        {turns.map((t, i) => (
-          <div key={i} className={t.role === "user" ? "text-right" : ""}>
-            {t.role === "user" && <span className="inline-block rounded-2xl bg-emerald-600/90 px-3 py-2 text-sm text-white">{t.text}</span>}
-            {t.role === "assistant" && (
-              <div className="rounded-2xl bg-neutral-800/70 px-3 py-2.5 text-sm text-neutral-100">
-                <div className="mb-1 text-xs text-neutral-500">
-                  {t.service} · via OKX x402 {t.paid ? "· you paid 0.01 USDT" : "· free"}
+      </div>
+
+      <div className="p-6">
+        {/* Use-case chips */}
+        <div className="mb-4 flex flex-wrap gap-2">
+          {USE_CASES.map((u) => (
+            <button
+              key={u.label}
+              onClick={() => ask(u.prompt)}
+              disabled={blocked}
+              className="rounded-full border border-[var(--border-2)] px-3 py-1.5 text-xs text-[var(--muted)] transition hover:border-[rgba(46,230,160,0.5)] hover:text-[var(--text)] disabled:opacity-40"
+            >
+              {u.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Conversation */}
+        <div className="flex min-h-[220px] flex-col gap-3 overflow-y-auto pr-1" style={{ maxHeight: "50vh" }}>
+          {turns.length === 0 && (
+            <div className="grid flex-1 place-items-center text-center text-sm text-[var(--muted)]">
+              {gated ? (
+                <span>Connect your OKX Wallet to start — each call costs you 0.01 USDT.</span>
+              ) : (
+                <span>Pick a use case above, or ask anything about X Layer yield.</span>
+              )}
+            </div>
+          )}
+          {turns.map((t, i) => (
+            <div key={i} className={t.role === "user" ? "flex justify-end" : ""}>
+              {t.role === "user" && <span className="btn-brand max-w-[80%] rounded-2xl px-3.5 py-2 text-sm">{t.text}</span>}
+              {t.role === "assistant" && (
+                <div className="max-w-[85%] rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-3.5 py-2.5 text-sm">
+                  <div className="mb-1.5 text-[11px] text-[var(--muted)]">
+                    {t.service} · via OKX x402 {t.paid ? "· you paid 0.01 USDT" : "· free"}
+                  </div>
+                  <Deliverable result={t.result} />
                 </div>
-                <Deliverable result={t.result} />
-              </div>
-            )}
-            {t.role === "error" && <span className="inline-block rounded-2xl bg-red-950/60 px-3 py-2 text-sm text-red-300">{t.text}</span>}
-          </div>
-        ))}
-        {busy && (
-          <div className="flex items-center gap-2 text-sm text-neutral-400">
-            <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-neutral-600 border-t-emerald-500" />
-            Sign the 0.01 USDT payment in your wallet…
-          </div>
-        )}
-      </div>
+              )}
+              {t.role === "error" && <span className="inline-block rounded-2xl bg-red-950/50 px-3.5 py-2 text-sm text-red-300">{t.text}</span>}
+            </div>
+          ))}
+          {busy && (
+            <div className="flex items-center gap-2 text-sm text-[var(--muted)]">
+              <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-[var(--border-2)] border-t-[var(--brand)]" />
+              Sign the 0.01 USDT payment in your wallet…
+            </div>
+          )}
+        </div>
 
-      <div className="mt-3 flex gap-2">
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && ask(input)}
-          placeholder={gated ? "Connect wallet to use the copilot…" : "Ask the copilot…"}
-          disabled={busy}
-          className="flex-1 rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-2.5 text-sm outline-none focus:border-emerald-600 disabled:opacity-50"
-        />
-        <button
-          onClick={() => ask(input)}
-          disabled={busy || underfunded}
-          className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
-        >
-          Send
-        </button>
+        {/* Input */}
+        <div className="mt-4 flex gap-2">
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && ask(input)}
+            placeholder={gated ? "Connect wallet to use the copilot…" : "Ask the copilot…"}
+            disabled={busy}
+            className="flex-1 rounded-xl border border-[var(--border-2)] bg-[#0a0d12] px-4 py-3 text-sm outline-none transition focus:border-[rgba(46,230,160,0.6)] disabled:opacity-50"
+          />
+          <button onClick={() => ask(input)} disabled={busy} className="btn-brand px-5 py-3 text-sm disabled:opacity-50">
+            Send
+          </button>
+        </div>
       </div>
     </section>
   );

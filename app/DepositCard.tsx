@@ -56,41 +56,44 @@ export function DepositCard({ best }: { best?: YieldVenue }) {
   }
 
   return (
-    <div>
-      <div className="flex gap-2">
+    <div className="glass p-5">
+      <div className="flex items-center justify-between">
+        <div className="text-xs uppercase tracking-wide text-[var(--muted)]">Earn · one-click deposit</div>
+        <div className="text-xs text-[var(--muted)]">{best?.asset ?? "USDT"}</div>
+      </div>
+      <div className="mt-2 flex items-end justify-between">
+        <div>
+          <div className="text-3xl font-semibold brand-text">{best ? `${best.apy_pct}%` : "—"}</div>
+          <div className="text-xs text-[var(--muted)]">{best?.venue_name ?? "Aave V3 — USDT (X Layer)"}</div>
+        </div>
+        <div className="text-right text-[11px] text-[var(--muted)]">
+          <div>risk {best?.risk_score ?? 1}/5</div>
+          <div>non-custodial</div>
+        </div>
+      </div>
+
+      <div className="mt-4 flex gap-2">
         <input
           value={amount}
           onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ""))}
           inputMode="decimal"
           placeholder={`Amount (${best?.asset ?? "USDT"})`}
-          className="flex-1 rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-3 text-sm outline-none focus:border-emerald-600"
+          className="w-full flex-1 rounded-xl border border-[var(--border-2)] bg-[#0a0d12] px-4 py-3 text-sm outline-none transition focus:border-[rgba(46,230,160,0.6)]"
         />
-        <button
-          onClick={deposit}
-          disabled={!canDeposit}
-          className="rounded-xl bg-emerald-600 px-5 py-3 font-medium text-white hover:bg-emerald-500 disabled:opacity-40"
-        >
-          {busy ? "Working…" : isConnected ? "Deposit" : "Connect wallet"}
-        </button>
       </div>
+      <button onClick={deposit} disabled={!canDeposit} className="btn-brand mt-2 w-full px-4 py-3 text-sm disabled:opacity-40">
+        {busy ? "Working…" : isConnected ? "Deposit" : "Connect wallet to deposit"}
+      </button>
 
       {steps.length > 0 && (
         <ul className="mt-4 flex flex-col gap-1.5 text-sm">
           {steps.map((s, i) => (
             <li key={i} className="flex items-center gap-2">
-              <span
-                className={
-                  s.status === "done"
-                    ? "text-emerald-400"
-                    : s.status === "error"
-                      ? "text-red-400"
-                      : "text-neutral-400"
-                }
-              >
+              <span className={s.status === "done" ? "brand-text" : s.status === "error" ? "text-red-400" : "text-[var(--muted)]"}>
                 {s.status === "done" ? "✓" : s.status === "error" ? "✕" : "○"}
               </span>
-              <span className="text-neutral-300">{s.label}</span>
-              <span className="text-neutral-500">
+              <span className="text-[var(--text)]">{s.label}</span>
+              <span className="text-[var(--muted)]">
                 {s.status === "signing" && "— sign in wallet"}
                 {s.status === "confirming" && "— confirming…"}
                 {s.status === "error" && `— ${s.error?.slice(0, 60)}`}
@@ -101,8 +104,8 @@ export function DepositCard({ best }: { best?: YieldVenue }) {
       )}
 
       {done && (
-        <div className="mt-3 rounded-lg bg-emerald-950/60 px-4 py-2 text-sm text-emerald-300">
-          Deposited. Your {best?.asset ?? "USDT"} is now earning — and IdleFlow never held a cent of it.
+        <div className="mt-3 rounded-lg bg-[rgba(46,230,160,0.12)] px-4 py-2 text-sm brand-text">
+          Deposited. Your {best?.asset ?? "USDT"} is now earning — IdleFlow never held a cent.
         </div>
       )}
     </div>
