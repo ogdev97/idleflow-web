@@ -1,69 +1,105 @@
-import Image from "next/image";
+"use client";
+
+import { useAccount, useConnect, useDisconnect, useChainId, useSwitchChain } from "wagmi";
+import { useQuery } from "@tanstack/react-query";
+import { api, type YieldResponse, type MarketOverview } from "@/lib/api";
+import { xLayer } from "@/lib/chains";
+
+function short(a?: string) {
+  return a ? `${a.slice(0, 6)}…${a.slice(-4)}` : "";
+}
 
 export default function Home() {
+  const { address, isConnected } = useAccount();
+  const { connect, connectors, isPending } = useConnect();
+  const { disconnect } = useDisconnect();
+  const chainId = useChainId();
+  const { switchChain } = useSwitchChain();
+
+  const yieldQ = useQuery<YieldResponse>({ queryKey: ["yield", "USDT"], queryFn: () => api.yield("USDT") });
+  const marketQ = useQuery<MarketOverview>({ queryKey: ["market"], queryFn: () => api.market() });
+
+  const best = yieldQ.data?.opportunities?.[0];
+  const injected = connectors[0];
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="mx-auto w-full max-w-2xl px-6 py-16 flex flex-col gap-10 text-neutral-100">
+      <header className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-emerald-500">●</span>
+          <span className="font-semibold">IdleFlow</span>
+          <span className="text-xs text-neutral-500">X Layer money operations</span>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+        {isConnected ? (
+          <button
+            onClick={() => disconnect()}
+            className="rounded-lg border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-800"
           >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            {short(address)} · disconnect
+          </button>
+        ) : (
+          <button
+            onClick={() => injected && connect({ connector: injected })}
+            disabled={isPending || !injected}
+            className="rounded-lg bg-emerald-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
           >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+            {isPending ? "Connecting…" : "Connect wallet"}
+          </button>
+        )}
+      </header>
+
+      <section className="flex flex-col gap-3">
+        <h1 className="text-3xl font-semibold tracking-tight">Earn on your idle stablecoins.</h1>
+        <p className="text-neutral-400">
+          The best risk-adjusted yield on X Layer — one click, non-custodial. Your wallet signs; IdleFlow never holds
+          your funds.
+        </p>
+      </section>
+
+      {/* Best yield card — proves the backend read loop end to end */}
+      <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-6">
+        <div className="text-xs uppercase tracking-wide text-neutral-500">Best USDT yield · X Layer</div>
+        {yieldQ.isLoading ? (
+          <div className="mt-3 text-neutral-500">Loading live rates…</div>
+        ) : yieldQ.error ? (
+          <div className="mt-3 text-red-400">Couldn&apos;t reach IdleFlow API: {(yieldQ.error as Error).message}</div>
+        ) : best ? (
+          <div className="mt-3 flex items-end justify-between">
+            <div>
+              <div className="text-4xl font-semibold text-emerald-400">{best.apy_pct}%</div>
+              <div className="mt-1 text-sm text-neutral-400">{best.venue_name}</div>
+            </div>
+            <div className="text-right text-sm text-neutral-500">
+              <div>risk {best.risk_score}/5</div>
+              <div>TVL ${Number(best.tvl).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-3 text-neutral-500">No venue.</div>
+        )}
+        <button
+          disabled
+          className="mt-6 w-full rounded-xl bg-emerald-600/40 px-4 py-3 font-medium text-white/70"
+          title="Deposit flow lands in Phase 1"
+        >
+          {isConnected ? "Deposit (Phase 1)" : "Connect wallet to deposit"}
+        </button>
+      </section>
+
+      <footer className="flex items-center justify-between text-xs text-neutral-500">
+        <span>
+          stablecoin market cap:{" "}
+          {marketQ.data ? `$${(marketQ.data.total_market_cap_usd / 1e9).toFixed(0)}B` : "—"}
+        </span>
+        <span>
+          chain {chainId}
+          {isConnected && chainId !== xLayer.id && (
+            <button onClick={() => switchChain({ chainId: xLayer.id })} className="ml-2 underline">
+              switch to X Layer
+            </button>
+          )}
+        </span>
+      </footer>
+    </main>
   );
 }
