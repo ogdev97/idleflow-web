@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAccount, useChainId, useReadContract, useSwitchChain } from "wagmi";
 import { getWalletClient } from "wagmi/actions";
 import { erc20Abi, formatUnits } from "viem";
 import { payAndCallTool, routeIntent, USDT_ADDRESS, CALL_PRICE_USDT } from "@/lib/x402";
+import { copilotBus } from "@/lib/copilotBus";
 import { wagmiConfig } from "@/lib/wagmi";
 import { xLayer } from "@/lib/chains";
 
@@ -88,6 +89,14 @@ export function Copilot() {
     setTimeout(() => setCopied(false), 1500);
   }
 
+  // Let other components (Top Yields) drive the copilot. Ref so the bus always
+  // calls the latest ask (with current gated/balance state).
+  const askRef = useRef<(t: string) => void>(() => {});
+  useEffect(() => {
+    copilotBus.setHandler((p) => askRef.current(p));
+    return () => copilotBus.setHandler(null);
+  }, []);
+
   async function ask(text: string) {
     const msg = text.trim();
     if (!msg || busy) return;
@@ -118,8 +127,10 @@ export function Copilot() {
     }
   }
 
+  askRef.current = ask;
+
   return (
-    <section className="glass overflow-hidden">
+    <section id="copilot" className="glass overflow-hidden">
       {/* Header */}
       <div className="border-b border-[var(--border)] bg-[rgba(46,230,160,0.04)] px-6 py-4">
         <div className="flex items-center gap-2">

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { copilotBus } from "@/lib/copilotBus";
 
 type Row = { name: string; platform: string; apy: number; tvl: number; lp: boolean; safe: boolean; note?: string };
 
@@ -80,13 +81,28 @@ export function TopYields() {
         {isLoading && <div className="py-6 text-center text-xs text-[var(--muted)]">loading yields…</div>}
         {!isLoading && top.length === 0 && <div className="py-6 text-center text-xs text-[var(--muted)]">No yield found for {tok}.</div>}
         {top.map((r, i) => (
-          <div key={i} className="flex items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--panel)] px-3 py-2.5">
+          <button
+            key={i}
+            onClick={() => {
+              copilotBus.ask(
+                STABLE.has(tok)
+                  ? `What's the best ${tok} yield on X Layer?`
+                  : `Find the best yield for ${tok} (I'm looking at ${r.name}).`,
+              );
+              document.getElementById("copilot")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+            title="Ask the Copilot"
+            className="group flex w-full items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--panel)] px-3 py-2.5 text-left transition hover:border-[rgba(46,230,160,0.5)] hover:bg-[rgba(46,230,160,0.06)]"
+          >
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <span className="truncate text-sm font-medium">{r.name}</span>
                 {i === 0 && r.apy >= 20 && <span className="rounded bg-[rgba(46,230,160,0.16)] px-1.5 py-0.5 text-[10px] brand-text">🔥 top</span>}
               </div>
-              <div className="truncate text-[11px] text-[var(--muted)]">{r.platform}</div>
+              <div className="truncate text-[11px] text-[var(--muted)]">
+                {r.platform}
+                <span className="text-[var(--brand)] opacity-0 transition group-hover:opacity-100"> · ask ✦</span>
+              </div>
             </div>
             <div className="ml-3 shrink-0 text-right">
               <div className={`text-lg font-semibold ${apyClass(r.apy)}`}>{r.apy.toFixed(2)}%</div>
@@ -100,7 +116,7 @@ export function TopYields() {
                 )}
               </div>
             </div>
-          </div>
+          </button>
         ))}
       </div>
 
