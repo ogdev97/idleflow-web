@@ -62,8 +62,8 @@ export function DepositCard({ best }: { best?: YieldVenue }) {
   return (
     <div className="glass p-5">
       <div className="flex items-center justify-between">
-        <div className="text-xs uppercase tracking-wide text-[var(--muted)]">Earn · one-click deposit</div>
-        <div className="text-xs text-[var(--muted)]">{best?.asset ?? "USDT"}</div>
+        <div className="text-xs uppercase tracking-wide text-[var(--muted)]">Safe deposit · 1-click</div>
+        <div className="text-xs text-[var(--muted)]">{best?.asset ?? "USDT"} · Aave</div>
       </div>
       <div className="mt-2 flex items-end justify-between">
         <div>

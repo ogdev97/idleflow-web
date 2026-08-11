@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { api, type YieldResponse, type MarketOverview, type MarketTrends } from "@/lib/api";
+import { api, type YieldResponse, type MarketOverview, type MarketTrends, type TokenYield } from "@/lib/api";
 import { OKX_AGENT_URL } from "@/lib/constants";
 import { Logo } from "./Logo";
 import { AreaChart } from "./AreaChart";
@@ -31,8 +31,10 @@ export default function Landing() {
   const yieldQ = useQuery<YieldResponse>({ queryKey: ["yield", "USDT"], queryFn: () => api.yield("USDT") });
   const marketQ = useQuery<MarketOverview>({ queryKey: ["market"], queryFn: () => api.market() });
   const trendsQ = useQuery<MarketTrends>({ queryKey: ["trends", 30], queryFn: () => api.trends(30) });
+  const okbQ = useQuery<TokenYield>({ queryKey: ["topyield", "OKB"], queryFn: () => api.tokenYield("OKB") });
   const best = yieldQ.data?.opportunities?.[0];
   const series = trendsQ.data?.points.map((p) => p.mcap_usd) ?? [];
+  const topOkb = Math.max(0, ...(okbQ.data?.options ?? []).map((o) => o.apy_pct ?? 0));
 
   return (
     <div className="relative min-h-full overflow-hidden">
@@ -90,6 +92,15 @@ export default function Landing() {
                 <div>TVL ${best ? Number(best.tvl).toLocaleString(undefined, { maximumFractionDigits: 0 }) : "—"}</div>
               </div>
             </div>
+            {topOkb > 0 && (
+              <div className="mt-3 flex items-center justify-between rounded-xl border border-amber-500/20 bg-amber-500/[0.06] px-3 py-2">
+                <span className="text-sm">
+                  🔥 OKB &amp; token pools <span className="text-[var(--muted)]">· higher yield, higher risk</span>
+                </span>
+                <span className="text-sm font-semibold text-emerald-300">up to {topOkb.toFixed(0)}%</span>
+              </div>
+            )}
+
             <div className="mt-4">
               <div className="mb-1 flex items-center justify-between text-[11px] text-[var(--muted)]">
                 <span>Stablecoin market cap · 30d</span>

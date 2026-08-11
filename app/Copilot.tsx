@@ -13,13 +13,13 @@ type Turn =
   | { role: "assistant"; service: string; result: unknown; paid: boolean }
   | { role: "error"; text: string };
 
-const USE_CASES: { label: string; prompt: string }[] = [
-  { label: "Best USDT yield", prompt: "What's the best USDT yield on X Layer?" },
-  { label: "OKB token yield", prompt: "Find the best yield for OKB" },
-  { label: "Stablecoin market", prompt: "How's the stablecoin market doing?" },
-  { label: "Cross-chain route", prompt: "Quote a cross-chain route from X Layer to Base" },
-  { label: "Guardian scan", prompt: "Is token 0x779ded0c9e1022225f8e0630b35a9b54be713736 safe?" },
-  { label: "Yield autopilot", prompt: "Set up yield autopilot for my position" },
+const USE_CASES: { icon: string; label: string; sub: string; prompt: string }[] = [
+  { icon: "📈", label: "Best stable yield", sub: "top USDT/USDG APY", prompt: "What's the best USDT yield on X Layer?" },
+  { icon: "🔶", label: "OKB & token yield", sub: "higher, riskier", prompt: "Find the best yield for OKB" },
+  { icon: "🌍", label: "Market pulse", sub: "live stablecoin market", prompt: "How's the stablecoin market doing?" },
+  { icon: "🌉", label: "Cross-chain", sub: "bridge route quote", prompt: "Quote a cross-chain route from X Layer to Base" },
+  { icon: "🛡️", label: "Guardian scan", sub: "honeypot / scam check", prompt: "Is token 0x779ded0c9e1022225f8e0630b35a9b54be713736 safe?" },
+  { icon: "🤖", label: "Autopilot", sub: "auto-rebalance policy", prompt: "Set up yield autopilot for my position" },
 ];
 
 function short(a?: string) {
@@ -156,16 +156,22 @@ export function Copilot() {
       </div>
 
       <div className="p-6">
-        {/* Use-case chips */}
-        <div className="mb-4 flex flex-wrap gap-2">
+        {/* Use-case cards */}
+        <div className="mb-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
           {USE_CASES.map((u) => (
             <button
               key={u.label}
               onClick={() => ask(u.prompt)}
               disabled={blocked}
-              className="rounded-full border border-[var(--border-2)] px-3 py-1.5 text-xs text-[var(--muted)] transition hover:border-[rgba(46,230,160,0.5)] hover:text-[var(--text)] disabled:opacity-40"
+              className="group flex items-start gap-2.5 rounded-xl border border-[var(--border-2)] bg-[var(--panel)] p-3 text-left transition hover:-translate-y-0.5 hover:border-[rgba(46,230,160,0.5)] hover:bg-[rgba(46,230,160,0.06)] disabled:pointer-events-none disabled:opacity-40"
             >
-              {u.label}
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[rgba(46,230,160,0.12)] text-base transition group-hover:scale-110">
+                {u.icon}
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-medium text-[var(--text)]">{u.label}</span>
+                <span className="block truncate text-[11px] text-[var(--muted)]">{u.sub}</span>
+              </span>
             </button>
           ))}
         </div>

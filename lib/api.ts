@@ -74,7 +74,23 @@ export const api = {
     post<DepositPlan>("/api/prepare/deposit", payload),
   copilot: (message: string, wallet?: string) => post<CopilotResult>("/api/copilot", { message, wallet }),
   trends: (days = 30) => get<MarketTrends>(`/api/market/trends?days=${days}`),
+  tokenYield: (token = "OKB") => get<TokenYield>(`/api/token-yield?token=${encodeURIComponent(token)}`),
 };
+
+export interface TokenYieldOption {
+  name: string;
+  platform: string;
+  product_group: string;
+  apy_pct: number | null;
+  tvl_usd: number;
+  is_lp: boolean;
+  risk_note?: string;
+}
+export interface TokenYield {
+  token: string;
+  count: number;
+  options: TokenYieldOption[];
+}
 
 export interface MarketTrends {
   chain: string;

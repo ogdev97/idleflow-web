@@ -8,6 +8,7 @@ import { Logo } from "../Logo";
 import { ConnectWallet } from "../ConnectWallet";
 import { Copilot } from "../Copilot";
 import { DepositCard } from "../DepositCard";
+import { TopYields } from "../TopYields";
 
 export default function AppPage() {
   const yieldQ = useQuery<YieldResponse>({ queryKey: ["yield", "USDT"], queryFn: () => api.yield("USDT") });
@@ -45,8 +46,9 @@ export default function AppPage() {
             <Copilot />
           </div>
 
-          {/* SUB — Earn + quick facts */}
+          {/* SUB — Top yields + earn + quick facts */}
           <aside className="flex flex-col gap-5">
+            <TopYields />
             <DepositCard best={best} />
 
             <div className="glass p-5 text-sm">
