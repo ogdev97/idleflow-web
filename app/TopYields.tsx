@@ -50,6 +50,27 @@ function apyClass(apy: number) {
   return "text-[var(--muted)]";
 }
 
+/** Free pre-scan heuristic from liquidity/APY/type. The paid Guardian scan (on
+ * click) is the authoritative verdict — this is just a hint before paying. */
+function heuristicRisk(r: Row): { label: string; cls: string } {
+  if (r.safe) return { label: "Low", cls: "bg-[rgba(46,230,160,0.14)] text-[var(--brand)]" };
+  let s = 0;
+  if (r.lp) s += 1;
+  if (r.tvl < 50_000) s += 2;
+  else if (r.tvl < 250_000) s += 1;
+  if (r.apy > 100) s += 2;
+  else if (r.apy > 40) s += 1;
+  if (s >= 4) return { label: "High", cls: "bg-red-500/15 text-red-300" };
+  if (s >= 2) return { label: "Med", cls: "bg-amber-500/15 text-amber-300" };
+  return { label: "Low", cls: "bg-[rgba(46,230,160,0.14)] text-[var(--brand)]" };
+}
+
+function tvlShort(v: number) {
+  if (v >= 1e6) return `$${(v / 1e6).toFixed(1)}M`;
+  if (v >= 1e3) return `$${(v / 1e3).toFixed(0)}k`;
+  return `$${v.toFixed(0)}`;
+}
+
 export function TopYields() {
   const [tok, setTok] = useState<Tok>("OKB");
   const [pending, setPending] = useState<number | null>(null);
@@ -117,12 +138,16 @@ export function TopYields() {
             className="group flex w-full items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--panel)] px-3 py-2.5 text-left transition hover:border-[rgba(46,230,160,0.5)] hover:bg-[rgba(46,230,160,0.06)] disabled:opacity-50"
           >
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <span className="truncate text-sm font-medium">{r.name}</span>
-                {i === 0 && r.apy >= 20 && <span className="rounded bg-[rgba(46,230,160,0.16)] px-1.5 py-0.5 text-[10px] brand-text">🔥 top</span>}
+                {(() => {
+                  const h = heuristicRisk(r);
+                  return <span className={`rounded px-1.5 py-0.5 text-[10px] ${h.cls}`} title="Pre-scan estimate — click to run a real Guardian scan">{h.label}</span>;
+                })()}
+                {i === 0 && r.apy >= 20 && <span className="text-[10px]">🔥</span>}
               </div>
               <div className="truncate text-[11px] text-[var(--muted)]">
-                {r.platform}
+                {r.platform} · {tvlShort(r.tvl)} TVL
                 {pending === i ? (
                   <span className="text-[var(--brand)]"> · resolving token…</span>
                 ) : (
