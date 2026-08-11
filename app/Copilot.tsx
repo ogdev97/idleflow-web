@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { useAccount, useChainId, useReadContract, useSwitchChain, useWalletClient } from "wagmi";
+import { useAccount, useChainId, useReadContract, useSwitchChain } from "wagmi";
+import { getWalletClient } from "wagmi/actions";
 import { erc20Abi, formatUnits } from "viem";
 import { payAndCallTool, routeIntent, USDT_ADDRESS, CALL_PRICE_USDT } from "@/lib/x402";
+import { wagmiConfig } from "@/lib/wagmi";
 import { xLayer } from "@/lib/chains";
 
 type Turn =
@@ -19,6 +21,10 @@ const USE_CASES: { label: string; prompt: string }[] = [
   { label: "Guardian scan", prompt: "Is token 0x779ded0c9e1022225f8e0630b35a9b54be713736 safe?" },
   { label: "Yield autopilot", prompt: "Set up yield autopilot for my position" },
 ];
+
+function short(a?: string) {
+  return a ? `${a.slice(0, 6)}…${a.slice(-4)}` : "";
+}
 
 function Deliverable({ result }: { result: unknown }) {
   const r = result as Record<string, unknown>;
@@ -57,23 +63,30 @@ export function Copilot() {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const { switchChainAsync } = useSwitchChain();
-  const { data: walletClient } = useWalletClient();
   const { data: usdtRaw } = useReadContract({
     address: USDT_ADDRESS,
     abi: erc20Abi,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
     chainId: xLayer.id,
-    query: { enabled: isConnected && !!address, refetchInterval: 15_000 },
+    query: { enabled: isConnected && !!address, refetchInterval: 12_000 },
   });
   const [turns, setTurns] = useState<Turn[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
 
-  const gated = !isConnected || !walletClient;
+  const gated = !isConnected || !address;
   const usdtBal = usdtRaw !== undefined ? Number(formatUnits(usdtRaw, 6)) : undefined;
-  const underfunded = usdtBal !== undefined && usdtBal < CALL_PRICE_USDT;
-  const blocked = busy || underfunded;
+  const underfunded = !gated && usdtBal !== undefined && usdtBal < CALL_PRICE_USDT;
+  const blocked = busy || gated || underfunded;
+
+  function copyAddr() {
+    if (!address) return;
+    navigator.clipboard?.writeText(address);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
 
   async function ask(text: string) {
     const msg = text.trim();
@@ -83,7 +96,7 @@ export function Copilot() {
       return;
     }
     if (underfunded) {
-      setTurns((t) => [...t, { role: "error", text: `Fund your wallet first — you have ${usdtBal?.toFixed(4)} USDT, each call costs ${CALL_PRICE_USDT}. Send USD₮0 to your wallet on X Layer.` }]);
+      setTurns((t) => [...t, { role: "error", text: `Fund your connected wallet first — it has ${usdtBal?.toFixed(4)} USDT, each call costs ${CALL_PRICE_USDT}. Send USDT to ${address}.` }]);
       return;
     }
     setInput("");
@@ -91,11 +104,15 @@ export function Copilot() {
     setBusy(true);
     try {
       if (chainId !== xLayer.id) await switchChainAsync({ chainId: xLayer.id });
+      // Fetch the wallet client fresh (the hook can be null when the wallet's
+      // active chain differs). This is what signs the x402 payment.
+      const wc = await getWalletClient(wagmiConfig, { chainId: xLayer.id });
+      if (!wc) throw new Error("Wallet client unavailable — reconnect your wallet and try again.");
       const { service, tool, args } = routeIntent(msg);
-      const { result, paid } = await payAndCallTool(walletClient!, tool, args);
+      const { result, paid } = await payAndCallTool(wc, tool, args);
       setTurns((t) => [...t, { role: "assistant", service, result, paid }]);
     } catch (e) {
-      setTurns((t) => [...t, { role: "error", text: e instanceof Error ? e.message.slice(0, 120) : String(e) }]);
+      setTurns((t) => [...t, { role: "error", text: e instanceof Error ? e.message.slice(0, 140) : String(e) }]);
     } finally {
       setBusy(false);
     }
@@ -118,9 +135,22 @@ export function Copilot() {
             </span>
           )}
         </div>
+
+        {/* Funding banner — shows exactly which address to fund (the connected wallet) */}
         {underfunded && (
-          <div className="mt-2 rounded-lg bg-amber-950/50 px-3 py-1.5 text-xs text-amber-300">
-            ⚠ Fund your wallet — send at least {CALL_PRICE_USDT} USD₮0 on X Layer to run the copilot.
+          <div className="mt-2 rounded-lg border border-amber-500/25 bg-amber-950/40 px-3 py-2 text-xs text-amber-200">
+            <div className="font-medium">⚠ Fund this wallet to run the copilot</div>
+            <div className="mt-1 text-amber-200/80">
+              The copilot pays from your <span className="font-medium">connected wallet</span> — there is no separate agent wallet.
+              Send at least {CALL_PRICE_USDT} USDT (token{" "}
+              <span className="font-mono">0x779d…6d22</span>) on X Layer to:
+            </div>
+            <div className="mt-1.5 flex items-center gap-2">
+              <code className="rounded bg-black/40 px-2 py-1 font-mono text-[11px] text-amber-100">{address}</code>
+              <button onClick={copyAddr} className="rounded border border-amber-500/30 px-2 py-1 text-[11px] hover:bg-amber-500/10">
+                {copied ? "copied ✓" : "copy"}
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -146,6 +176,8 @@ export function Copilot() {
             <div className="grid flex-1 place-items-center text-center text-sm text-[var(--muted)]">
               {gated ? (
                 <span>Connect your OKX Wallet to start — each call costs you 0.01 USDT.</span>
+              ) : underfunded ? (
+                <span>Fund your connected wallet above, then pick a use case.</span>
               ) : (
                 <span>Pick a use case above, or ask anything about X Layer yield.</span>
               )}
@@ -179,14 +211,19 @@ export function Copilot() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && ask(input)}
-            placeholder={gated ? "Connect wallet to use the copilot…" : "Ask the copilot…"}
-            disabled={busy}
+            placeholder={gated ? "Connect wallet to use the copilot…" : underfunded ? "Fund your wallet to continue…" : "Ask the copilot…"}
+            disabled={blocked}
             className="flex-1 rounded-xl border border-[var(--border-2)] bg-[#0a0d12] px-4 py-3 text-sm outline-none transition focus:border-[rgba(46,230,160,0.6)] disabled:opacity-50"
           />
-          <button onClick={() => ask(input)} disabled={busy} className="btn-brand px-5 py-3 text-sm disabled:opacity-50">
+          <button onClick={() => ask(input)} disabled={blocked} className="btn-brand px-5 py-3 text-sm disabled:opacity-50">
             Send
           </button>
         </div>
+        {isConnected && (
+          <div className="mt-2 text-[11px] text-[var(--muted)]">
+            Paying from <span className="font-mono text-[var(--text)]">{short(address)}</span> — your connected wallet.
+          </div>
+        )}
       </div>
     </section>
   );
