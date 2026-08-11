@@ -75,7 +75,14 @@ export const api = {
   copilot: (message: string, wallet?: string) => post<CopilotResult>("/api/copilot", { message, wallet }),
   trends: (days = 30) => get<MarketTrends>(`/api/market/trends?days=${days}`),
   tokenYield: (token = "OKB") => get<TokenYield>(`/api/token-yield?token=${encodeURIComponent(token)}`),
+  poolToken: (investmentId: string) => get<PoolToken>(`/api/pool-token?investment_id=${encodeURIComponent(investmentId)}`),
 };
+
+export interface PoolToken {
+  investment_id: string;
+  token: { symbol: string; address: string; base: boolean } | null;
+  tokens: { symbol: string; address: string; base: boolean }[];
+}
 
 export interface TokenYieldOption {
   name: string;
@@ -83,6 +90,7 @@ export interface TokenYieldOption {
   product_group: string;
   apy_pct: number | null;
   tvl_usd: number;
+  investment_id?: string;
   is_lp: boolean;
   risk_note?: string;
 }
