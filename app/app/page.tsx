@@ -11,7 +11,7 @@ import { DepositCard } from "../DepositCard";
 import { TopYields } from "../TopYields";
 
 export default function AppPage() {
-  const yieldQ = useQuery<YieldResponse>({ queryKey: ["yield", "USDT"], queryFn: () => api.yield("USDT") });
+  const yieldQ = useQuery<YieldResponse>({ queryKey: ["yield", "ALL"], queryFn: () => api.yield() });
   const best = yieldQ.data?.opportunities?.[0];
 
   return (

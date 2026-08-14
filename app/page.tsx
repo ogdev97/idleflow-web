@@ -28,7 +28,7 @@ function Feature({ icon, title, body }: { icon: string; title: string; body: str
 }
 
 export default function Landing() {
-  const yieldQ = useQuery<YieldResponse>({ queryKey: ["yield", "USDT"], queryFn: () => api.yield("USDT") });
+  const yieldQ = useQuery<YieldResponse>({ queryKey: ["yield", "ALL"], queryFn: () => api.yield() });
   const marketQ = useQuery<MarketOverview>({ queryKey: ["market"], queryFn: () => api.market() });
   const trendsQ = useQuery<MarketTrends>({ queryKey: ["trends", 30], queryFn: () => api.trends(30) });
   const okbQ = useQuery<TokenYield>({ queryKey: ["topyield", "OKB"], queryFn: () => api.tokenYield("OKB") });
@@ -79,7 +79,7 @@ export default function Landing() {
         <div className="glass mx-auto mt-14 max-w-3xl overflow-hidden p-1.5 text-left">
           <div className="rounded-2xl bg-[#0a0d12] p-5">
             <div className="flex items-center justify-between">
-              <div className="text-xs uppercase tracking-wide text-[var(--muted)]">Best USDT yield · X Layer</div>
+              <div className="text-xs uppercase tracking-wide text-[var(--muted)]">Best stable yield · X Layer</div>
               <div className="text-xs text-[var(--muted)]">via OKX x402</div>
             </div>
             <div className="mt-2 flex items-end justify-between">

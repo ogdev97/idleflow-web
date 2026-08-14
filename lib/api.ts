@@ -66,7 +66,7 @@ export interface DepositPlan {
 }
 
 export const api = {
-  yield: (asset = "USDT") => get<YieldResponse>(`/api/yield?asset=${encodeURIComponent(asset)}`),
+  yield: (asset?: string) => get<YieldResponse>(`/api/yield${asset ? `?asset=${encodeURIComponent(asset)}` : ""}`),
   market: () => get<MarketOverview>("/api/market"),
   positions: (wallet: string) => get<unknown>(`/api/positions?wallet=${wallet}`),
   guardianToken: (address: string) => get<{ risk_level: string }>(`/api/guardian/token?address=${address}`),
