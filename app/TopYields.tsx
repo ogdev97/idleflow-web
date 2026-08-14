@@ -15,31 +15,47 @@ function useRows(tok: Tok) {
   return useQuery<Row[]>({
     queryKey: ["topyield", tok],
     queryFn: async () => {
-      if (STABLE.has(tok)) {
-        const d = await api.yield(tok);
-        return d.opportunities.map((o) => ({
-          name: o.venue_name.replace(/ \(X Layer\)/, ""),
-          platform: "Aave V3 · lending",
-          apy: o.apy_pct,
-          tvl: Number(o.tvl),
-          lp: false,
-          safe: (o.risk_score ?? 5) <= 1,
-        }));
+      const rows: Row[] = [];
+      // DEX / token pools for every token (USDG pairs with tokenized equities:
+      // AAPLx, TSLAx, SPYx… — high yield, RWA angle).
+      try {
+        const d = await api.tokenYield(tok);
+        rows.push(
+          ...d.options
+            .filter((o) => o.apy_pct != null && o.apy_pct > 0)
+            .map((o) => ({
+              name: o.name,
+              platform: `${o.platform} · ${o.product_group.replace("_", " ").toLowerCase()}`,
+              apy: o.apy_pct as number,
+              tvl: o.tvl_usd,
+              lp: o.is_lp,
+              safe: false,
+              note: o.risk_note,
+              invId: o.investment_id,
+            })),
+        );
+      } catch {
+        /* token-yield may be empty for some tokens */
       }
-      const d = await api.tokenYield(tok);
-      return d.options
-        .filter((o) => o.apy_pct != null && o.apy_pct > 0)
-        .map((o) => ({
-          name: o.name,
-          platform: `${o.platform} · ${o.product_group.replace("_", " ").toLowerCase()}`,
-          apy: o.apy_pct as number,
-          tvl: o.tvl_usd,
-          lp: o.is_lp,
-          safe: false,
-          note: o.risk_note,
-          invId: o.investment_id,
-        }))
-        .sort((a, b) => b.apy - a.apy);
+      // Safe Aave lending venue for stablecoins (USDT/USDG).
+      if (STABLE.has(tok)) {
+        try {
+          const d = await api.yield(tok);
+          rows.push(
+            ...d.opportunities.map((o) => ({
+              name: o.venue_name.replace(/ \(X Layer\)/, ""),
+              platform: "Aave V3 · lending",
+              apy: o.apy_pct,
+              tvl: Number(o.tvl),
+              lp: false,
+              safe: (o.risk_score ?? 5) <= 1,
+            })),
+          );
+        } catch {
+          /* ignore */
+        }
+      }
+      return rows.sort((a, b) => b.apy - a.apy);
     },
   });
 }
@@ -172,9 +188,8 @@ export function TopYields() {
       </div>
 
       <div className="mt-3 text-[11px] leading-relaxed text-[var(--muted)]">
-        {STABLE.has(tok)
-          ? "Stablecoin lending — one-click deposit below (non-custodial)."
-          : "High-yield LP pools carry impermanent-loss risk. Ask the Copilot to prepare a safe move."}
+        High-yield LP / RWA pools carry impermanent-loss risk — click a row to Guardian-scan its token.
+        {STABLE.has(tok) ? " The safe Aave stable is 1-click below." : ""}
       </div>
     </div>
   );
