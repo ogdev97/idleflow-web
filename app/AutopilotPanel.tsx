@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAccount, useBytecode, useChainId, useReadContract, useSendTransaction, useSwitchChain } from "wagmi";
 import { waitForTransactionReceipt } from "wagmi/actions";
 import { erc20Abi, formatUnits } from "viem";
-import { api } from "@/lib/api";
+import { api, type AutopilotStatus } from "@/lib/api";
 import { STABLES } from "@/lib/x402";
 import { wagmiConfig } from "@/lib/wagmi";
 import { xLayer } from "@/lib/chains";
@@ -35,11 +35,59 @@ export function AutopilotPanel() {
   const isSmartAccount = !!code && code !== "0x";
 
   const [policy, setPolicy] = useState<Policy>(DEFAULT);
-  useEffect(() => setPolicy(loadPolicy(address)), [address]);
+  const [server, setServer] = useState<AutopilotStatus["policies"][number] | null>(null);
+
+  // Hydrate from localStorage instantly, then reconcile with the server (source of
+  // truth for the keeper) so an enabled policy set on another device shows here.
+  useEffect(() => {
+    setPolicy(loadPolicy(address));
+    setServer(null);
+    if (!address) return;
+    let live = true;
+    api
+      .autopilotStatus(address)
+      .then((s) => {
+        if (!live) return;
+        const p = s.policies.find((x) => x.idle_deposit) ?? s.policies[0] ?? null;
+        setServer(p ?? null);
+        if (p && p.idle_deposit) {
+          const merged: Policy = {
+            asset: p.asset,
+            min: p.min_trigger ?? DEFAULT.min,
+            max: p.max_per_run ?? DEFAULT.max,
+            cooldownHrs: p.cooldown_hours ?? DEFAULT.cooldownHrs,
+            enabled: p.enabled,
+          };
+          setPolicy(merged);
+          savePolicy(address, merged);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [address]);
+
+  // Persist to the backend (debounced) so the keeper sweeps this policy.
+  const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function syncToServer(next: Policy, wallet: string) {
+    if (syncTimer.current) clearTimeout(syncTimer.current);
+    syncTimer.current = setTimeout(() => {
+      api
+        .setAutopilotPolicy({ wallet, asset: next.asset, min_trigger: next.min, max_per_run: next.max, cooldown_hours: next.cooldownHrs, enabled: next.enabled })
+        .then(() => api.autopilotStatus(wallet))
+        .then((s) => setServer(s.policies.find((x) => x.idle_deposit) ?? null))
+        .catch(() => {});
+    }, 500);
+  }
+
   const update = (patch: Partial<Policy>) => {
     const next = { ...policy, ...patch };
     setPolicy(next);
-    if (address) savePolicy(address, next);
+    if (address) {
+      savePolicy(address, next);
+      syncToServer(next, address);
+    }
   };
 
   const asset = STABLES.find((s) => s.sym === policy.asset)!;
@@ -150,6 +198,17 @@ export function AutopilotPanel() {
       {mode === "auto" && policy.enabled && (
         <div className="mt-2 text-[11px] text-[var(--muted)]">
           Runs automatically via your Agentic Wallet session when idle ≥ ${policy.min}, up to ${policy.max}/run, every {policy.cooldownHrs}h. Non-custodial.
+        </div>
+      )}
+
+      {/* Keeper status — server-side truth (what the L3 sweep will do). */}
+      {server?.idle_deposit && (
+        <div className="mt-2 rounded-lg bg-[var(--panel)] px-3 py-2 text-[11px] text-[var(--muted)]">
+          <span className="text-[var(--brand)]">✓ saved server-side</span>
+          {server.best_venue?.venue_name && <> · best: {server.best_venue.venue_name.replace(/ \(X Layer\)/, "")} {server.best_venue.apy_pct != null && `${server.best_venue.apy_pct.toFixed(2)}%`}</>}
+          {server.in_cooldown && server.next_eligible_at && <> · cooldown until {new Date(server.next_eligible_at).toLocaleString()}</>}
+          {server.would_deposit > 0 && !server.in_cooldown && <> · next run deposits ${server.would_deposit} {server.asset}</>}
+          {server.last_reason && <> · last: {server.last_reason.slice(0, 60)}</>}
         </div>
       )}
       {status && <div className="mt-2 text-[11px] text-[var(--muted)]">{status}</div>}

@@ -76,7 +76,30 @@ export const api = {
   trends: (days = 30) => get<MarketTrends>(`/api/market/trends?days=${days}`),
   tokenYield: (token = "OKB") => get<TokenYield>(`/api/token-yield?token=${encodeURIComponent(token)}`),
   poolToken: (investmentId: string) => get<PoolToken>(`/api/pool-token?investment_id=${encodeURIComponent(investmentId)}`),
+  setAutopilotPolicy: (payload: { wallet: string; asset: string; min_trigger: number; max_per_run: number; cooldown_hours: number; enabled: boolean }) =>
+    post<{ ok: boolean }>("/api/autopilot/policy", payload),
+  autopilotStatus: (wallet: string) => get<AutopilotStatus>(`/api/autopilot/status?wallet=${wallet}`),
 };
+
+export interface AutopilotStatus {
+  wallet: string;
+  policies: {
+    asset: "USDT" | "USDG";
+    enabled: boolean;
+    idle_deposit: boolean;
+    min_trigger?: number;
+    max_per_run?: number;
+    cooldown_hours: number;
+    idle: number;
+    would_deposit: number;
+    in_cooldown: boolean;
+    next_eligible_at?: string;
+    best_venue?: { venue_id: string; venue_name?: string; apy_pct?: number };
+    last_action?: string;
+    last_reason?: string;
+    last_check_at?: string;
+  }[];
+}
 
 export interface PoolToken {
   investment_id: string;
