@@ -1,6 +1,11 @@
 import { x402Client, x402HTTPClient } from "@okxweb3/x402-core/client";
 import { ExactEvmScheme } from "@okxweb3/x402-evm";
-import type { WalletClient } from "viem";
+import { createPublicClient, http, type WalletClient } from "viem";
+import { xLayer } from "./chains";
+
+// Read-only client so the exact scheme can read the token's on-chain EIP-712
+// domain/nonce when building the EIP-3009 authorization.
+const publicClient = createPublicClient({ chain: xLayer, transport: http() });
 
 /**
  * Client-side x402 — the USER's own wallet pays for each service call. The browser
@@ -62,11 +67,16 @@ export async function payAndCallTool(walletClient: WalletClient, tool: string, a
         primaryType: m.primaryType,
         message: m.message,
       }),
+    // Required by ExactEvmScheme to read the token's EIP-712 domain/nonce.
+    readContract: (a: unknown) => (publicClient.readContract as (x: unknown) => Promise<unknown>)(a),
   };
   const client = new x402Client().register(NETWORK as never, new ExactEvmScheme(signer) as never);
   const http = new x402HTTPClient(client);
   const paymentRequired = http.getPaymentRequiredResponse((n) => first.headers.get(n));
-  const payHeaders = await http.handlePaymentRequired(paymentRequired);
+  // Use the low-level build (createPaymentPayload + encode) — handlePaymentRequired
+  // returns null via an internal payment-policy selector we don't configure.
+  const payload = await http.createPaymentPayload(paymentRequired);
+  const payHeaders = http.encodePaymentSignatureHeader(payload);
   if (!payHeaders) throw new Error("Could not build the x402 payment");
 
   // 3. Replay with the payment header → deliverable.

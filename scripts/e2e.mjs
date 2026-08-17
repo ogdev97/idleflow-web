@@ -52,11 +52,13 @@ async function callTool(tool, args) {
   const signer = {
     address: account.address,
     signTypedData: (m) => account.signTypedData({ domain: m.domain, types: m.types, primaryType: m.primaryType, message: m.message }),
+    readContract: (a) => pub.readContract(a),
   };
   const client = new x402Client().register(NETWORK, new ExactEvmScheme(signer));
   const httpc = new x402HTTPClient(client);
   const pr = httpc.getPaymentRequiredResponse((n) => first.headers.get(n));
-  const headers = await httpc.handlePaymentRequired(pr);
+  const payload = await httpc.createPaymentPayload(pr);
+  const headers = httpc.encodePaymentSignatureHeader(payload);
   const paid = await fetch(RESOURCE, { method: "POST", headers: { "content-type": "application/json", ...headers }, body });
   return { paid: true, status: paid.status, json: await paid.json().catch(() => ({})) };
 }
