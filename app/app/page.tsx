@@ -9,6 +9,7 @@ import { ConnectWallet } from "../ConnectWallet";
 import { Copilot } from "../Copilot";
 import { DepositCard } from "../DepositCard";
 import { TopYields } from "../TopYields";
+import { AutopilotPanel } from "../AutopilotPanel";
 import { AutoSwitchChain } from "../AutoSwitchChain";
 
 export default function AppPage() {
@@ -52,6 +53,7 @@ export default function AppPage() {
           <aside className="flex flex-col gap-5">
             <TopYields />
             <DepositCard best={best} />
+            <AutopilotPanel />
 
             <div className="glass p-5 text-sm">
               <div className="text-xs uppercase tracking-wide text-[var(--muted)]">IdleFlow on OKX.AI</div>
