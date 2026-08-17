@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { copilotBus } from "@/lib/copilotBus";
+import { OKX_DEFI_URL } from "@/lib/constants";
 
 type Row = { name: string; platform: string; apy: number; tvl: number; lp: boolean; safe: boolean; note?: string; invId?: string };
 
@@ -146,12 +147,11 @@ export function TopYields() {
         {isLoading && <div className="py-6 text-center text-xs text-[var(--muted)]">loading yields…</div>}
         {!isLoading && top.length === 0 && <div className="py-6 text-center text-xs text-[var(--muted)]">No yield found for {tok}.</div>}
         {top.map((r, i) => (
-          <button
+          <div
             key={i}
             onClick={() => onRow(r, i)}
-            disabled={pending !== null}
-            title={r.lp ? "Guardian-scan this pool's token via the Copilot" : "Ask the Copilot"}
-            className="group flex w-full items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--panel)] px-3 py-2.5 text-left transition hover:border-[rgba(46,230,160,0.5)] hover:bg-[rgba(46,230,160,0.06)] disabled:opacity-50"
+            title={r.lp ? "Click to Guardian-scan this pool's token via the Copilot" : "Click to ask the Copilot"}
+            className={`group flex w-full items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--panel)] px-3 py-2.5 text-left transition hover:border-[rgba(46,230,160,0.5)] hover:bg-[rgba(46,230,160,0.06)] ${pending !== null ? "pointer-events-none opacity-50" : "cursor-pointer"}`}
           >
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
@@ -164,10 +164,22 @@ export function TopYields() {
               </div>
               <div className="truncate text-[11px] text-[var(--muted)]">
                 {r.platform} · {tvlShort(r.tvl)} TVL
-                {pending === i ? (
-                  <span className="text-[var(--brand)]"> · resolving token…</span>
-                ) : (
-                  <span className="text-[var(--brand)] opacity-0 transition group-hover:opacity-100"> · {r.lp ? "scan ✦" : "ask ✦"}</span>
+                {pending === i && <span className="text-[var(--brand)]"> · resolving token…</span>}
+                {pending !== i && r.lp && <span className="text-[var(--brand)]"> · 🛡 click to scan</span>}
+                {pending !== i && !r.lp && <span className="text-[var(--brand)] opacity-0 transition group-hover:opacity-100"> · ask ✦</span>}
+                {r.invId && (
+                  <>
+                    {" · "}
+                    <a
+                      href={OKX_DEFI_URL}
+                      target="_blank"
+                      rel="noopener"
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-[var(--text)] underline decoration-dotted underline-offset-2 hover:text-[var(--brand)]"
+                    >
+                      open pool ↗
+                    </a>
+                  </>
                 )}
               </div>
             </div>
@@ -183,7 +195,7 @@ export function TopYields() {
                 )}
               </div>
             </div>
-          </button>
+          </div>
         ))}
       </div>
 

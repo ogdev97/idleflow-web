@@ -6,6 +6,7 @@ import { getWalletClient } from "wagmi/actions";
 import { erc20Abi, formatUnits } from "viem";
 import { payAndCallTool, routeIntent, USDT_ADDRESS, CALL_PRICE_USDT } from "@/lib/x402";
 import { copilotBus } from "@/lib/copilotBus";
+import { OKX_BRIDGE_URL } from "@/lib/constants";
 import { wagmiConfig } from "@/lib/wagmi";
 import { xLayer } from "@/lib/chains";
 
@@ -16,10 +17,8 @@ type Turn =
 
 const USE_CASES: { icon: string; label: string; sub: string; prompt: string }[] = [
   { icon: "📈", label: "Best stable yield", sub: "top USDT/USDG APY", prompt: "What's the best stablecoin yield on X Layer?" },
-  { icon: "🔶", label: "OKB & token yield", sub: "higher, riskier", prompt: "Find the best yield for OKB" },
   { icon: "🌍", label: "Market pulse", sub: "live stablecoin market", prompt: "How's the stablecoin market doing?" },
   { icon: "🌉", label: "Cross-chain", sub: "bridge route quote", prompt: "Quote a cross-chain route from X Layer to Base" },
-  { icon: "🛡️", label: "Guardian scan", sub: "honeypot / scam check", prompt: "Is token 0x779ded0c9e1022225f8e0630b35a9b54be713736 safe?" },
   { icon: "🤖", label: "Autopilot", sub: "auto-rebalance policy", prompt: "Set up yield autopilot for my position" },
 ];
 
@@ -46,6 +45,28 @@ function Deliverable({ result }: { result: unknown }) {
     return <div>Total stablecoin cap <span className="brand-text">${n(r.total_market_cap_usd)}</span> · X Layer {String(x?.share_pct ?? "—")}%</div>;
   }
   if (r?.risk_level) return <div>Risk: <span className="brand-text">{String(r.risk_level)}</span>{r.is_honeypot ? " · ⚠ honeypot" : ""}</div>;
+  if (Array.isArray(r?.routes) && r?.from_token) {
+    const ft = r.from_token as Record<string, unknown>;
+    const tt = r.to_token as Record<string, unknown>;
+    const best = (r.routes as Record<string, unknown>[])[0];
+    const u = (v: unknown) => (Number(v) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 2 });
+    if (!best) return <div className="text-[var(--muted)]">No route available right now.</div>;
+    return (
+      <div className="flex flex-col gap-1.5">
+        <div>
+          <span className="brand-text">{String(r.amount)} {String(ft.symbol)}</span> <span className="text-[var(--muted)]">({String(r.from_chain)})</span>
+          {" → "}
+          <span className="brand-text">~{u(best.out_amount)} {String(tt.symbol)}</span> <span className="text-[var(--muted)]">({String(r.to_chain)})</span>
+        </div>
+        <div className="text-[11px] text-[var(--muted)]">
+          via {String(best.bridge)} · fee {u(best.cross_chain_fee)} {String(ft.symbol)} · min received {u(best.min_received)} {String(tt.symbol)}
+        </div>
+        <a href={OKX_BRIDGE_URL} target="_blank" rel="noopener" className="btn-brand mt-1 w-fit px-3 py-1.5 text-xs">
+          Bridge on OKX ↗
+        </a>
+      </div>
+    );
+  }
   if (Array.isArray(r?.options))
     return (
       <div className="flex flex-col gap-1.5">
