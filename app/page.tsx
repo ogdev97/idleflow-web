@@ -31,7 +31,7 @@ export default function Landing() {
   const yieldQ = useQuery<YieldResponse>({ queryKey: ["yield", "ALL"], queryFn: () => api.yield() });
   const marketQ = useQuery<MarketOverview>({ queryKey: ["market"], queryFn: () => api.market() });
   const trendsQ = useQuery<MarketTrends>({ queryKey: ["trends", 30], queryFn: () => api.trends(30) });
-  const okbQ = useQuery<TokenYield>({ queryKey: ["topyield", "OKB"], queryFn: () => api.tokenYield("OKB") });
+  const okbQ = useQuery<TokenYield>({ queryKey: ["tokenyield-raw", "OKB"], queryFn: () => api.tokenYield("OKB") });
   const best = yieldQ.data?.opportunities?.[0];
   const series = trendsQ.data?.points.map((p) => p.mcap_usd) ?? [];
   const topOkb = Math.max(0, ...(okbQ.data?.options ?? []).map((o) => o.apy_pct ?? 0));

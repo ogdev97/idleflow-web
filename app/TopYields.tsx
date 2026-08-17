@@ -91,7 +91,7 @@ export function TopYields() {
   const [tok, setTok] = useState<Tok>("OKB");
   const [pending, setPending] = useState<number | null>(null);
   const { data: rows, isLoading } = useRows(tok);
-  const top = rows?.slice(0, 4) ?? [];
+  const top = Array.isArray(rows) ? rows.slice(0, 4) : [];
 
   function jumpToCopilot() {
     document.getElementById("copilot")?.scrollIntoView({ behavior: "smooth", block: "start" });
