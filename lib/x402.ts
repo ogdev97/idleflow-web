@@ -88,7 +88,8 @@ export async function payAndCallTool(walletClient: WalletClient, tool: string, a
 /** Deterministic intent router over IdleFlow's 6 services (no LLM). */
 export function routeIntent(message: string): { service: string; tool: string; args: Record<string, unknown> } {
   const m = message.toLowerCase();
-  const asset = /usdg/.test(m) ? "USDG" : "USDT";
+  // Only scope to a specific stable when the user names it; otherwise rank across ALL.
+  const asset = /\busdg\b/.test(m) ? "USDG" : /\busdt\b/.test(m) ? "USDT" : undefined;
   const token = (m.match(/\b(okb|xbtc|xeth|weth|wbtc)\b/i)?.[1] ?? "OKB").toUpperCase();
   const address = m.match(/0x[0-9a-f]{40}/i)?.[0];
 
@@ -102,5 +103,5 @@ export function routeIntent(message: string): { service: string; tool: string; a
     return { service: "Stablecoin Market Overview", tool: "get_stablecoin_market_overview", args: {} };
   if (/\b(okb|xbtc|xeth|token yield|any token)\b/.test(m))
     return { service: "Token Yield Finder", tool: "get_token_yield", args: { token } };
-  return { service: "Stablecoin Yield", tool: "get_yield_opportunities", args: { asset } };
+  return { service: "Best Stablecoin Yield", tool: "get_yield_opportunities", args: asset ? { asset } : {} };
 }

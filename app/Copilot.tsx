@@ -15,7 +15,7 @@ type Turn =
   | { role: "error"; text: string };
 
 const USE_CASES: { icon: string; label: string; sub: string; prompt: string }[] = [
-  { icon: "📈", label: "Best stable yield", sub: "top USDT/USDG APY", prompt: "What's the best USDT yield on X Layer?" },
+  { icon: "📈", label: "Best stable yield", sub: "top USDT/USDG APY", prompt: "What's the best stablecoin yield on X Layer?" },
   { icon: "🔶", label: "OKB & token yield", sub: "higher, riskier", prompt: "Find the best yield for OKB" },
   { icon: "🌍", label: "Market pulse", sub: "live stablecoin market", prompt: "How's the stablecoin market doing?" },
   { icon: "🌉", label: "Cross-chain", sub: "bridge route quote", prompt: "Quote a cross-chain route from X Layer to Base" },
