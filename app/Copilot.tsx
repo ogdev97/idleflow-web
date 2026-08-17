@@ -112,10 +112,21 @@ export function Copilot() {
     setTurns((t) => [...t, { role: "user", text: msg }]);
     setBusy(true);
     try {
-      if (chainId !== xLayer.id) await switchChainAsync({ chainId: xLayer.id });
+      if (chainId !== xLayer.id) {
+        try {
+          await switchChainAsync({ chainId: xLayer.id });
+        } catch {
+          throw new Error("Switch your wallet to X Layer to continue.");
+        }
+      }
       // Fetch the wallet client fresh (the hook can be null when the wallet's
       // active chain differs). This is what signs the x402 payment.
-      const wc = await getWalletClient(wagmiConfig, { chainId: xLayer.id });
+      let wc;
+      try {
+        wc = await getWalletClient(wagmiConfig, { chainId: xLayer.id });
+      } catch {
+        throw new Error("Your wallet isn't on X Layer yet — approve the network switch and try again.");
+      }
       if (!wc) throw new Error("Wallet client unavailable — reconnect your wallet and try again.");
       const { service, tool, args } = routeIntent(msg);
       const { result, paid } = await payAndCallTool(wc, tool, args);

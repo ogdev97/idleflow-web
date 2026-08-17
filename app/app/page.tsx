@@ -9,6 +9,7 @@ import { ConnectWallet } from "../ConnectWallet";
 import { Copilot } from "../Copilot";
 import { DepositCard } from "../DepositCard";
 import { TopYields } from "../TopYields";
+import { AutoSwitchChain } from "../AutoSwitchChain";
 
 export default function AppPage() {
   const yieldQ = useQuery<YieldResponse>({ queryKey: ["yield", "ALL"], queryFn: () => api.yield() });
@@ -31,6 +32,7 @@ export default function AppPage() {
       </header>
 
       <main className="relative z-10 mx-auto max-w-6xl px-6 pb-16 pt-2">
+        <AutoSwitchChain />
         <div className="mb-6">
           <h1 className="text-2xl font-semibold tracking-tight">
             Your <span className="grad-text">money copilot</span> for X Layer.
