@@ -162,7 +162,7 @@ export function TopYields() {
                 })()}
                 {i === 0 && r.apy >= 20 && <span className="text-[10px]">🔥</span>}
               </div>
-              <div className="truncate text-[11px] text-[var(--muted)]">
+              <div className="text-[11px] text-[var(--muted)]">
                 {r.platform} · {tvlShort(r.tvl)} TVL
                 {pending === i && <span className="text-[var(--brand)]"> · resolving token…</span>}
                 {pending !== i && r.lp && <span className="text-[var(--brand)]"> · 🛡 click to scan</span>}
