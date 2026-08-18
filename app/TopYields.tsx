@@ -89,7 +89,7 @@ function tvlShort(v: number) {
 }
 
 export function TopYields() {
-  const [tok, setTok] = useState<Tok>("OKB");
+  const [tok, setTok] = useState<Tok>("USDG");
   const [pending, setPending] = useState<number | null>(null);
   const { data: rows, isLoading } = useRows(tok);
   const top = Array.isArray(rows) ? rows.slice(0, 4) : [];
@@ -201,7 +201,7 @@ export function TopYields() {
 
       <div className="mt-3 text-[11px] leading-relaxed text-[var(--muted)]">
         High-yield LP / RWA pools carry impermanent-loss risk — click a row to Guardian-scan its token.
-        {STABLE.has(tok) ? " The safe Aave stable is 1-click below." : ""}
+        {STABLE.has(tok) ? "" : ""}
       </div>
     </div>
   );
