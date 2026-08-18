@@ -90,9 +90,14 @@ function tvlShort(v: number) {
 
 export function TopYields() {
   const [tok, setTok] = useState<Tok>("USDG");
+  const [mode, setMode] = useState<"safe" | "yield">("safe");
   const [pending, setPending] = useState<number | null>(null);
   const { data: rows, isLoading } = useRows(tok);
-  const top = Array.isArray(rows) ? rows.slice(0, 4) : [];
+  // Low-risk view: non-LP venues the pre-scan rates Low (safe Aave lending leads).
+  // High-yield view: everything, ranked by APY (LP / RWA pools included).
+  const all = Array.isArray(rows) ? rows : [];
+  const view = mode === "safe" ? all.filter((r) => !r.lp && heuristicRisk(r).label === "Low") : all;
+  const top = view.slice(0, 4);
 
   function jumpToCopilot() {
     document.getElementById("copilot")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -124,7 +129,17 @@ export function TopYields() {
     <div className="glass p-5">
       <div className="flex items-center justify-between">
         <div className="text-xs uppercase tracking-wide text-[var(--muted)]">Top yields · X Layer</div>
-        <div className="text-[11px] text-[var(--muted)]">live</div>
+        <div className="flex items-center rounded-full border border-[var(--border-2)] p-0.5 text-[11px]">
+          {([["safe", "Low-risk"], ["yield", "High-yield"]] as const).map(([m, label]) => (
+            <button
+              key={m}
+              onClick={() => setMode(m)}
+              className={`rounded-full px-2.5 py-0.5 transition ${mode === m ? "bg-[var(--brand)] font-medium text-[var(--brand-ink)]" : "text-[var(--muted)] hover:text-[var(--text)]"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* token selector */}
@@ -145,7 +160,11 @@ export function TopYields() {
       {/* rows */}
       <div className="mt-3 flex flex-col gap-2">
         {isLoading && <div className="py-6 text-center text-xs text-[var(--muted)]">loading yields…</div>}
-        {!isLoading && top.length === 0 && <div className="py-6 text-center text-xs text-[var(--muted)]">No yield found for {tok}.</div>}
+        {!isLoading && top.length === 0 && (
+          <div className="py-6 text-center text-xs text-[var(--muted)]">
+            {mode === "safe" ? <>No low-risk venue for {tok} — try <button onClick={() => setMode("yield")} className="brand-text underline underline-offset-2">High-yield</button>.</> : <>No yield found for {tok}.</>}
+          </div>
+        )}
         {top.map((r, i) => (
           <div
             key={i}
@@ -200,7 +219,9 @@ export function TopYields() {
       </div>
 
       <div className="mt-3 text-[11px] leading-relaxed text-[var(--muted)]">
-        High-yield LP / RWA pools carry impermanent-loss risk — click a row to Guardian-scan its token.
+        {mode === "safe"
+          ? "Low-risk view: vetted Aave lending — deposit the top stable in one click on the right."
+          : "High-yield LP / RWA pools carry impermanent-loss risk — click a row to Guardian-scan its token."}
         {STABLE.has(tok) ? "" : ""}
       </div>
     </div>
