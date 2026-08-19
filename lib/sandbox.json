@@ -1,7 +1,7 @@
 {
   "chainId": 1952,
-  "tUSDT": "0x0000000000000000000000000000000000000000",
-  "vault": "0x0000000000000000000000000000000000000000",
+  "tUSDT": "0xb653f64b2d474c465408e89b5522e251d826faf3",
+  "vault": "0xc86fe2ebb84eb1574fbf76e514d8eb305391963f",
   "explorer": "https://www.oklink.com/xlayer-test",
-  "deployedAt": null
+  "deployedAt": "2026-08-19T09:20:00.284Z"
 }
