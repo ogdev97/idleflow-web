@@ -111,13 +111,6 @@ export function Sandbox() {
 
   const withdraw = () => run("Withdraw all", SANDBOX.vault, encodeFunctionData({ abi: vault_ABI, functionName: "withdraw" }));
 
-  // Step states
-  const s1 = isConnected ? "done" : "active";
-  const s2 = !isConnected ? "todo" : onTestnet ? "done" : "active";
-  const s3 = !onTestnet ? "todo" : hasGas ? "done" : "active";
-  const s4 = !hasGas ? "todo" : walletUsdt > 0 || hasPosition ? "done" : "active";
-  const s5 = walletUsdt <= 0 && !hasPosition ? "todo" : hasPosition ? "done" : "active";
-
   if (!SANDBOX_READY) {
     return (
       <div className="glass p-5">
@@ -129,59 +122,109 @@ export function Sandbox() {
     );
   }
 
+  // Onboarded = the user already has test tokens or a position → hide the
+  // get-tokens onboarding and show the earn view (deposit / position / withdraw).
+  const onboarded = walletUsdt > 0 || hasPosition;
+
+  const txLine = msg && (
+    <div className="mt-3 text-[12px] text-[var(--muted)]">
+      {msg}
+      {lastTx && <> · <a href={`${SANDBOX.explorer}/tx/${lastTx}`} target="_blank" rel="noopener" className="brand-text underline underline-offset-2">view tx ↗</a></>}
+    </div>
+  );
+
+  const Header = (
+    <div className="flex items-center justify-between">
+      <div className="text-xs uppercase tracking-wide text-[var(--muted)]">🧪 Testnet sandbox — free, no real money</div>
+      <span className="rounded-full bg-[rgba(46,230,160,0.14)] px-2 py-0.5 text-[10px] text-[var(--brand)]">X Layer Testnet · {SANDBOX_APR_PCT}% demo APR</span>
+    </div>
+  );
+
+  // ── Gate 1: connect ──────────────────────────────────────────────────────
+  if (!isConnected) {
+    return (
+      <div className="glass p-5">
+        {Header}
+        <p className="mt-2 text-sm text-[var(--muted)]">Practice the full non-custodial earn flow with free test tokens — you sign every step, you keep custody.</p>
+        <div className="mt-4"><ConnectWallet /></div>
+      </div>
+    );
+  }
+
+  // ── Gate 2: network ──────────────────────────────────────────────────────
+  if (!onTestnet) {
+    return (
+      <div className="glass p-5">
+        {Header}
+        <p className="mt-2 text-sm text-[var(--muted)]">Switch your wallet to X Layer Testnet (1952) to use the sandbox.</p>
+        <button onClick={() => switchChainAsync({ chainId: xLayerTestnet.id }).catch(() => {})} className="btn-brand mt-4 px-4 py-2 text-sm">Switch to X Layer Testnet</button>
+        {txLine}
+      </div>
+    );
+  }
+
+  // ── EARN VIEW (onboarded): position + deposit, no get-tokens steps ────────
+  if (onboarded) {
+    return (
+      <div className="glass p-5">
+        {Header}
+
+        {hasPosition && (
+          <div className="mt-4 rounded-xl border border-[rgba(46,230,160,0.35)] bg-[rgba(46,230,160,0.06)] p-4">
+            <div className="text-[11px] uppercase tracking-wide text-[var(--muted)]">Your position — earning live</div>
+            <div className="mt-1 font-mono text-3xl font-semibold brand-text tabular-nums">{liveBalance.toFixed(6)} <span className="text-lg">tUSDT</span></div>
+            <div className="mt-0.5 text-[12px] text-[var(--muted)]">
+              principal {principalNum.toFixed(2)} · <span className="brand-text">+{earnedLive.toFixed(6)} earned</span> · {SANDBOX_APR_PCT}% APR (demo)
+            </div>
+            <button onClick={withdraw} disabled={!!busy} className="btn-ghost mt-3 w-full px-3 py-2 text-sm disabled:opacity-40">
+              {busy === "Withdraw all" ? "Withdrawing…" : "Withdraw principal + yield"}
+            </button>
+          </div>
+        )}
+
+        {/* Deposit box */}
+        <div className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--panel)] p-4">
+          <div className="flex items-center justify-between">
+            <div className="text-sm font-medium">{hasPosition ? "Add more" : "Deposit & start earning"}</div>
+            <div className="text-[11px] text-[var(--muted)]">wallet {walletUsdt.toFixed(2)} tUSDT</div>
+          </div>
+          <div className="mt-2 flex gap-2">
+            <input
+              value={amount}
+              onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ""))}
+              inputMode="decimal"
+              className="w-24 rounded-lg border border-[var(--border-2)] bg-[#0a0d12] px-3 py-1.5 text-sm outline-none focus:border-[rgba(46,230,160,0.6)]"
+            />
+            <button onClick={() => setAmount(String(Math.floor(walletUsdt)))} disabled={walletUsdt <= 0} className="btn-ghost px-2 py-1.5 text-xs disabled:opacity-40">Max</button>
+            <button onClick={deposit} disabled={walletUsdt <= 0 || !!busy || Number(amount) <= 0} className="btn-brand flex-1 px-3 py-1.5 text-sm disabled:opacity-40">
+              {busy === "Deposit" ? "Working…" : walletUsdt <= 0 ? "No tUSDT — get more below" : `Deposit ${amount || "0"} tUSDT`}
+            </button>
+          </div>
+          <div className="mt-2 flex items-center justify-between text-[11px] text-[var(--muted)]">
+            <span>gas {gas.toFixed(4)} OKB{gas === 0 && <> · <a href={OKB_FAUCET_URL} target="_blank" rel="noopener" className="brand-text underline">get OKB ↗</a></>}</span>
+            <button onClick={getTusdt} disabled={!hasGas || !!busy} className="brand-text underline disabled:opacity-40">
+              {busy === "Get 1,000 tUSDT" ? "minting…" : "Get 1,000 more tUSDT"}
+            </button>
+          </div>
+        </div>
+        {txLine}
+      </div>
+    );
+  }
+
+  // ── ONBOARDING (on testnet, no tokens yet): gas → get free tUSDT ──────────
   return (
     <div className="glass p-5">
-      <div className="flex items-center justify-between">
-        <div className="text-xs uppercase tracking-wide text-[var(--muted)]">🧪 Try it on testnet — free, no real money</div>
-        <span className="rounded-full bg-[rgba(46,230,160,0.14)] px-2 py-0.5 text-[10px] text-[var(--brand)]">X Layer Testnet · {SANDBOX_APR_PCT}% demo APR</span>
-      </div>
-      <p className="mt-2 text-sm text-[var(--muted)]">
-        Practice the full non-custodial earn flow with free test tokens — you sign every step, you keep custody. Same flow as mainnet, zero risk.
-      </p>
+      {Header}
+      <p className="mt-2 text-sm text-[var(--muted)]">Two quick steps to start earning — free test tokens, you sign, you keep custody.</p>
 
-      {/* LIVE position — the payoff, shown up top once earning. */}
-      {hasPosition && (
-        <div className="mt-4 rounded-xl border border-[rgba(46,230,160,0.35)] bg-[rgba(46,230,160,0.06)] p-4">
-          <div className="text-[11px] uppercase tracking-wide text-[var(--muted)]">Your position — earning live</div>
-          <div className="mt-1 font-mono text-3xl font-semibold brand-text tabular-nums">{liveBalance.toFixed(6)} <span className="text-lg">tUSDT</span></div>
-          <div className="mt-0.5 text-[12px] text-[var(--muted)]">
-            principal {principalNum.toFixed(2)} · <span className="brand-text">+{earnedLive.toFixed(6)} earned</span> · {SANDBOX_APR_PCT}% APR (demo)
-          </div>
-          <button onClick={withdraw} disabled={!!busy} className="btn-ghost mt-3 w-full px-3 py-2 text-sm disabled:opacity-40">
-            {busy === "Withdraw all" ? "Withdrawing…" : "Withdraw principal + yield"}
-          </button>
-        </div>
-      )}
-
-      {/* STEPPER */}
       <ol className="mt-4 flex flex-col gap-3">
-        {/* 1 connect */}
+        {/* gas */}
         <li className="flex items-start gap-3">
-          <StepDot state={s1 as never} />
+          <StepDot state={hasGas ? "done" : "active"} />
           <div className="min-w-0 flex-1">
-            <div className="text-sm font-medium">Connect your wallet</div>
-            {!isConnected && <div className="mt-2"><ConnectWallet /></div>}
-          </div>
-        </li>
-        {/* 2 network */}
-        <li className="flex items-start gap-3">
-          <StepDot state={s2 as never} />
-          <div className="min-w-0 flex-1">
-            <div className="text-sm font-medium">Switch to X Layer Testnet</div>
-            {isConnected && !onTestnet && (
-              <button onClick={() => switchChainAsync({ chainId: xLayerTestnet.id }).catch(() => {})} className="btn-brand mt-2 px-3 py-1.5 text-sm">
-                Switch network
-              </button>
-            )}
-            {onTestnet && <div className="text-[12px] text-[var(--muted)]">Connected to X Layer Testnet (1952).</div>}
-          </div>
-        </li>
-        {/* 3 gas */}
-        <li className="flex items-start gap-3">
-          <StepDot state={s3 as never} />
-          <div className="min-w-0 flex-1">
-            <div className="text-sm font-medium">Get a little test OKB for gas {onTestnet && <span className="text-[var(--muted)]">· balance {gas.toFixed(4)} OKB</span>}</div>
-            {onTestnet && !hasGas && (
+            <div className="text-sm font-medium">Get a little test OKB for gas <span className="text-[var(--muted)]">· balance {gas.toFixed(4)} OKB</span></div>
+            {!hasGas && (
               <div className="mt-2 flex items-center gap-2">
                 <a href={OKB_FAUCET_URL} target="_blank" rel="noopener" className="btn-brand px-3 py-1.5 text-sm">Open OKX testnet faucet ↗</a>
                 <button onClick={() => gasBal.refetch()} className="btn-ghost px-3 py-1.5 text-sm">I&apos;ve got gas — refresh</button>
@@ -189,47 +232,19 @@ export function Sandbox() {
             )}
           </div>
         </li>
-        {/* 4 faucet tUSDT */}
+        {/* faucet tUSDT */}
         <li className="flex items-start gap-3">
-          <StepDot state={s4 as never} />
+          <StepDot state={hasGas ? "active" : "todo"} />
           <div className="min-w-0 flex-1">
-            <div className="text-sm font-medium">Get free tUSDT {(walletUsdt > 0 || hasPosition) && <span className="text-[var(--muted)]">· wallet {walletUsdt.toFixed(2)} tUSDT</span>}</div>
-            <div className="mt-1 text-[12px] text-[var(--muted)]">One tap mints {FAUCET_AMOUNT.toLocaleString()} tUSDT to your wallet.</div>
-            <button onClick={getTusdt} disabled={!hasGas || !!busy} className="btn-brand mt-2 px-3 py-1.5 text-sm disabled:opacity-40">
+            <div className="text-sm font-medium">Get free tUSDT</div>
+            <div className="mt-1 text-[12px] text-[var(--muted)]">One tap mints {FAUCET_AMOUNT.toLocaleString()} tUSDT to your wallet — then you can deposit and watch it earn.</div>
+            <button onClick={getTusdt} disabled={!hasGas || !!busy} className="btn-brand mt-2 px-4 py-2 text-sm disabled:opacity-40">
               {busy === "Get 1,000 tUSDT" ? "Minting…" : `Get ${FAUCET_AMOUNT.toLocaleString()} free tUSDT`}
             </button>
           </div>
         </li>
-        {/* 5 deposit */}
-        <li className="flex items-start gap-3">
-          <StepDot state={s5 as never} />
-          <div className="min-w-0 flex-1">
-            <div className="text-sm font-medium">Deposit into the IdleFlow vault</div>
-            <div className="mt-1 text-[12px] text-[var(--muted)]">Approve + supply in one flow. Starts earning {SANDBOX_APR_PCT}% demo APR immediately.</div>
-            <div className="mt-2 flex gap-2">
-              <input
-                value={amount}
-                onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ""))}
-                inputMode="decimal"
-                className="w-28 rounded-lg border border-[var(--border-2)] bg-[#0a0d12] px-3 py-1.5 text-sm outline-none focus:border-[rgba(46,230,160,0.6)]"
-              />
-              <button onClick={() => setAmount(String(Math.floor(walletUsdt)))} disabled={walletUsdt <= 0} className="btn-ghost px-2 py-1.5 text-xs disabled:opacity-40">Max</button>
-              <button onClick={deposit} disabled={walletUsdt <= 0 || !!busy || Number(amount) <= 0} className="btn-brand flex-1 px-3 py-1.5 text-sm disabled:opacity-40">
-                {busy === "Deposit" ? "Working…" : `Deposit ${amount || "0"} tUSDT`}
-              </button>
-            </div>
-          </div>
-        </li>
       </ol>
-
-      {msg && (
-        <div className="mt-3 text-[12px] text-[var(--muted)]">
-          {msg}
-          {lastTx && (
-            <> · <a href={`${SANDBOX.explorer}/tx/${lastTx}`} target="_blank" rel="noopener" className="brand-text underline underline-offset-2">view tx ↗</a></>
-          )}
-        </div>
-      )}
+      {txLine}
     </div>
   );
 }
