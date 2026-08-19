@@ -5,6 +5,7 @@ import { OKX_AGENT_URL } from "@/lib/constants";
 import { Logo } from "../Logo";
 import { ConnectWallet } from "../ConnectWallet";
 import { Sandbox } from "../Sandbox";
+import { SandboxCopilot } from "../SandboxCopilot";
 
 export default function AppPage() {
   return (
@@ -38,7 +39,8 @@ export default function AppPage() {
           <div className="lg:col-span-3">
             <Sandbox />
           </div>
-          <aside className="lg:col-span-2">
+          <aside className="flex flex-col gap-5 lg:col-span-2">
+            <SandboxCopilot />
             <div className="glass p-5 text-sm">
               <div className="text-xs uppercase tracking-wide text-[var(--muted)]">Why a testnet sandbox?</div>
               <ul className="mt-3 flex flex-col gap-2.5 text-[13px] text-[var(--muted)]">
